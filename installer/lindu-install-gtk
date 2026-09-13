@@ -23,6 +23,9 @@ if os.geteuid() != 0:
     sys.stderr.write("нужны права root (pkexec или sudo)\n")
     sys.exit(1)
 
+# pkexec вычищает окружение: заново указываем дисплей (доступ разрешён через xhost +local:)
+os.environ.setdefault("DISPLAY", ":0")
+
 import gi
 gi.require_version("Gtk", "3.0")
 from gi.repository import Gtk, GLib

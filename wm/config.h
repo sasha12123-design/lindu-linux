@@ -11,14 +11,20 @@
 
 /* ---------------------------- панель ---------------------------------- */
 
-#define BARH      26                 /* высота панели в пикселях   */
+#define BARH      30                 /* высота панели в пикселях   */
 #define PADDING_X 8
 #define PADDING_Y 7
 #define FONT      "-*-terminus-medium-r-normal-*-14-*-*-*-*-*-*-*"
 
-#define ACTIVE    "#000000"          /* цвет панели               */
-#define INACTIVE  "#1a1b1e"          /* не используется напрямую  */
-#define ACCENT    "#79d7f0"          /* цвет текста               */
+#define START_W   46                 /* ширина кнопки «Пуск»        */
+#define INST_W    46                 /* ширина кнопки установщика   */
+#define CLOCK_W   170                /* запас под часы справа       */
+
+#define ACTIVE    "#1f387b"          /* фон панели (как таскбар Windows) */
+#define INACTIVE  "#1f387b"
+#define ACCENT    "#ffffff"          /* цвет текста на панели      */
+#define BARACT    "#3a56a5"          /* фон активной кнопки задачи */
+#define BARLINE   "#79d7f0"          /* рамка активной задачи      */
 
 /* --------------------------- раскладки --------------------------------- */
 

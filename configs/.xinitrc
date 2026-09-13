@@ -17,14 +17,11 @@ acpid >/dev/null 2>&1 &
 # папки пользователя
 xdg-user-dirs-update >/dev/null 2>&1 &
 
-# панель Windows-стиля (таскбар снизу); запуск с паузой, чтобы WM успел стартовать
-( sleep 2; tint2 >/tmp/tint2.log 2>&1 & )
-
-# GUI-приложения от root (установщик via pkexec) подключаются к :0 без пароля X
-xhost +local: >/dev/null 2>&1
-
 # агент polkit — диалог "введите пароль" для GUI-приложений
 /usr/lib/polkit-gnome/polkit-gnome-authentication-agent-1 >/dev/null 2>&1 &
+
+# локальные GUI-приложения (в т.ч. от root через pkexec) подключаются к :0 без запроса
+xhost +local: >/dev/null 2>&1
 
 # фон рабочего стола
 if [ -f /usr/share/backgrounds/lindu.png ]; then

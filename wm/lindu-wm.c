@@ -61,12 +61,13 @@ static Atom atoms[NetLast];
 static Display *dpy;
 static int screen;
 static int scrw, scrh;
-static int barvisible = 0;
+static int barvisible = 1;
 static int barh;
 static int numlockmask = 0;
 static XFontStruct *barfont;
 static GC bargc;
-static unsigned long col_inact, col_accent;
+static unsigned long col_inact;
+static unsigned long col_bar, col_baract, col_barline, col_bartxt;
 static int running = 1;
 static time_t laststatus = 0;
 static Atom wm_delete, wm_protocols;
@@ -151,6 +152,10 @@ static void tagmon(const Arg *arg);
 /* ---------------- конфигурация (горячие клавиши, цвета) --------------- */
 #include "config.h"
 
+/* --- аргументы для кнопок встроенной панели --- */
+static const Arg arg_rofi = SHCMD("rofi -show drun");
+static const Arg arg_inst = SHCMD("/usr/local/bin/lindu-install-gtk");
+
 /* ----------------------------- утилиты ------------------------------ */
 
 static void
@@ -185,9 +190,9 @@ createmonitor(int x, int y, int w, int h, int num)
     mon->curlayout = LT_TILE;
 
     mon->barwin = XCreateSimpleWindow(dpy, DefaultRootWindow(dpy),
-                                      x, y, w, barh, 0,
+                                      x, y + h - barh, w, barh, 0,
                                       col_inact, col_inact);
-    XSelectInput(dpy, mon->barwin, ExposureMask);
+    XSelectInput(dpy, mon->barwin, ExposureMask | ButtonPressMask);
     XStoreName(dpy, mon->barwin, "lindu-bar");
 
     mon->next = monitors;
@@ -441,7 +446,7 @@ tile(Monitor *mon)
     x = mon->x;
     w = mon->w;
     h = mon->h - (barvisible ? barh : 0);
-    y = mon->y + (barvisible ? barh : 0);
+    y = mon->y;
     mh = (n == 1) ? h : h / (n - 1);
 
     for (c = clients; c; c = c->next) {
@@ -468,7 +473,7 @@ static void
 monocle(Monitor *mon)
 {
     Client *c;
-    int y = mon->y + (barvisible ? barh : 0);
+    int y = mon->y;
     int h = mon->h - (barvisible ? barh : 0);
 
     for (c = clients; c; c = c->next) {
@@ -513,55 +518,181 @@ arrange(void)
 
 /* ------------------------------ панель -------------------------------- */
 
+/* сколько видимых окон на мониторе в текущем теге */
+static int
+barcount(Monitor *mon)
+{
+    Client *c;
+    int n = 0;
+
+    for (c = clients; c; c = c->next)
+        if (c->mon == mon && (c->tags & mon->curtag) && !c->isfullscreen)
+            n++;
+    return n;
+}
+
+/* заголовок окна, только печатные ASCII символы (шрифт панели — Latin-1) */
+static const char *
+bartitle(Client *c)
+{
+    static char buf[160];
+    char *name = NULL;
+    size_t n = 0;
+    unsigned int i;
+
+    buf[0] = '\0';
+    if (XFetchName(dpy, c->win, &name) && name) {
+        for (i = 0; name[i] && n < sizeof(buf) - 1; i++) {
+            unsigned char ch = (unsigned char)name[i];
+            buf[n++] = (ch >= 32 && ch < 127) ? (char)ch : '?';
+        }
+        buf[n] = '\0';
+        XFree(name);
+        return buf;
+    }
+    return "app";
+}
+
+/* иконка кнопки: kind 1 — сетка 2x2 (как у Windows), kind 2 — стрелка вниз */
+static void
+baricon(Monitor *mon, int cx, int cy, int kind)
+{
+    int s = 6, g = 2;
+
+    XSetForeground(dpy, bargc, col_bartxt);
+    if (kind == 1) {
+        int x0 = cx - (2 * s + g) / 2;
+        int y0 = cy - (2 * s + g) / 2;
+        XFillRectangle(dpy, mon->barwin, bargc, x0, y0, s, s);
+        XFillRectangle(dpy, mon->barwin, bargc, x0 + s + g, y0, s, s);
+        XFillRectangle(dpy, mon->barwin, bargc, x0, y0 + s + g, s, s);
+        XFillRectangle(dpy, mon->barwin, bargc, x0 + s + g, y0 + s + g, s, s);
+    } else {
+        XFillRectangle(dpy, mon->barwin, bargc, cx - 2, cy - 9, 4, 11);
+        XFillRectangle(dpy, mon->barwin, bargc, cx - 7, cy + 2, 14, 4);
+    }
+}
+
+/* кнопка панели: подложка + иконка по центру */
+static void
+barbutton(Monitor *mon, int x0, int x1, int active, int kind)
+{
+    int w = x1 - x0;
+    int cx = x0 + w / 2;
+
+    if (active) {
+        XSetForeground(dpy, bargc, col_barline);
+        XFillRectangle(dpy, mon->barwin, bargc, x0, 0, w, barh);
+        XSetForeground(dpy, bargc, col_baract);
+        XFillRectangle(dpy, mon->barwin, bargc, x0 + 1, 1, w - 2, barh - 2);
+    }
+    baricon(mon, cx, barh / 2, kind);
+}
+
+/* список открытых окон (задачи) */
+static void
+bartasks(Monitor *mon)
+{
+    Client *c;
+    int n = barcount(mon);
+    int x0 = START_W + INST_W;
+    int x1 = mon->w - CLOCK_W;
+    int tw, i = 0;
+
+    if (!n)
+        return;
+    tw = (x1 - x0) / n;
+    if (tw < 50)
+        tw = 50;
+    for (c = clients; c; c = c->next) {
+        const char *tt;
+        int maxw, tl;
+        if (c->mon != mon || !(c->tags & mon->curtag) || c->isfullscreen)
+            continue;
+        XSetForeground(dpy, bargc, col_baract);
+        XFillRectangle(dpy, mon->barwin, bargc, x0 + i * tw + 2, 2, tw - 4, barh - 4);
+        if (c == mon->sel) {
+            XSetForeground(dpy, bargc, col_barline);
+            XFillRectangle(dpy, mon->barwin, bargc, x0 + i * tw + 2, 2, tw - 4, 2);
+        }
+        tt = bartitle(c);
+        tl = (int)strlen(tt);
+        maxw = tw - 10;
+        while (tl > 0 && XTextWidth(barfont, tt, tl) > maxw)
+            tl--;
+        XSetForeground(dpy, bargc, col_bartxt);
+        XDrawString(dpy, mon->barwin, bargc, x0 + i * tw + 5, barh - PADDING_Y,
+                    tt, tl);
+        i++;
+    }
+}
+
+/* часы справа */
+static void
+barclock(Monitor *mon)
+{
+    char buf[64];
+    time_t tmnow;
+    struct tm *tm;
+    int w;
+
+    tmnow = time(NULL);
+    tm = localtime(&tmnow);
+    snprintf(buf, sizeof(buf), "%02d:%02d %02d.%02d",
+             tm->tm_hour, tm->tm_min, tm->tm_mday, tm->tm_mon + 1);
+    w = XTextWidth(barfont, buf, (int)strlen(buf));
+    XSetForeground(dpy, bargc, col_bartxt);
+    XDrawString(dpy, mon->barwin, bargc, mon->w - w - PADDING_X, barh - PADDING_Y,
+                buf, (int)strlen(buf));
+}
+
 static void
 drawbar(Monitor *mon)
 {
-    char tagbuf[512] = "";
-    char buf[64];
-    Client *c;
-    time_t t;
-    struct tm *tm;
-    int i;
-    char mlabel[8];
-
     if (!barvisible)
         return;
 
-    snprintf(mlabel, sizeof(mlabel), "M%d ", mon->num + 1);
-    strncat(tagbuf, mlabel, sizeof(tagbuf) - strlen(tagbuf) - 1);
-
-    for (i = 0; i < TLAST; i++) {
-        int haswin = 0;
-        for (c = clients; c; c = c->next)
-            if (c->tags & (1 << i))
-                haswin = 1;
-        if (mon->curtag == (1u << i))
-            strcat(tagbuf, "[");
-        strcat(tagbuf, (i == T1) ? "1" : (i == T2) ? "2" : (i == T3) ? "3"
-               : (i == T4) ? "4" : (i == T5) ? "5" : (i == T6) ? "6"
-               : (i == T7) ? "7" : (i == T8) ? "8" : "9");
-        if (haswin)
-            strcat(tagbuf, "*");
-        if (mon->curtag == (1u << i))
-            strcat(tagbuf, "]");
-        strcat(tagbuf, " ");
-    }
-
-    strcat(tagbuf, mon->curlayout == LT_TILE ? "TILE"
-           : mon->curlayout == LT_MONOCLE ? "MONOCLE" : "FLOAT");
-
-    t = time(NULL);
-    tm = localtime(&t);
-    snprintf(buf, sizeof(buf), "    %s | %02d:%02d:%02d",
-             HOSTNAME, tm->tm_hour, tm->tm_min, tm->tm_sec);
-    strncat(tagbuf, buf, sizeof(tagbuf) - strlen(tagbuf) - 1);
-
-    XSetForeground(dpy, bargc, col_inact);
+    XSetForeground(dpy, bargc, col_bar);
     XFillRectangle(dpy, mon->barwin, bargc, 0, 0, mon->w, barh);
-    XSetForeground(dpy, bargc, col_accent);
-    XDrawString(dpy, mon->barwin, bargc, PADDING_X, barh - PADDING_Y,
-                tagbuf, (int)strlen(tagbuf));
+    barbutton(mon, 0, START_W, 0, 1);              /* Пуск → меню приложений */
+    barbutton(mon, START_W, START_W + INST_W, 0, 2); /* установщик          */
+    bartasks(mon);
+    barclock(mon);
     XFlush(dpy);
+}
+
+/* клик по панели: Пуск / установщик / переключение задач */
+static void
+barclick(Monitor *mon, int x)
+{
+    Client *c;
+    int n, x0, x1, tw, i = 0;
+
+    if (x < START_W) {
+        spawn(&arg_rofi);
+        return;
+    }
+    if (x < START_W + INST_W) {
+        spawn(&arg_inst);
+        return;
+    }
+    n = barcount(mon);
+    if (!n)
+        return;
+    x0 = START_W + INST_W;
+    x1 = mon->w - CLOCK_W;
+    tw = (x1 - x0) / n;
+    if (tw < 50)
+        tw = 50;
+    for (c = clients; c; c = c->next) {
+        if (c->mon != mon || !(c->tags & mon->curtag) || c->isfullscreen)
+            continue;
+        if (x >= x0 + i * tw && x < x0 + (i + 1) * tw) {
+            focus(c);
+            return;
+        }
+        i++;
+    }
 }
 
 static void
@@ -634,7 +765,7 @@ togglefloat(const Arg *arg)
     if (c->isfloating) {
         workh = mon->h - (barvisible ? barh : 0);
         c->ox = mon->x + MAX((mon->w - c->ow) / 2, 0);
-        c->oy = mon->y + (barvisible ? barh : 0) + MAX((workh - c->oh) / 2, 0);
+        c->oy = mon->y + MAX((workh - c->oh) / 2, 0);
         resize(c, c->ox, c->oy, c->ow, c->oh);
     } else {
         arrange();
@@ -907,7 +1038,15 @@ static void
 buttonpress(XEvent *e)
 {
     Client *c;
+    Monitor *bmon;
     XButtonEvent *be = &e->xbutton;
+
+    /* клик по панели? */
+    for (bmon = monitors; bmon; bmon = bmon->next)
+        if (bmon->barwin == be->window) {
+            barclick(bmon, be->x);
+            return;
+        }
 
     for (c = clients; c; c = c->next)
         if (c->win == be->window)
@@ -1110,7 +1249,10 @@ setup(void)
     if (!barfont)
         die("не найден шрифт для панели (установите terminus-font)");
     col_inact  = getcolor(INACTIVE);
-    col_accent = getcolor(ACCENT);
+    col_bar    = getcolor(ACTIVE);
+    col_baract = getcolor(BARACT);
+    col_barline= getcolor(BARLINE);
+    col_bartxt = getcolor(ACCENT);
     bargc = XCreateGC(dpy, DefaultRootWindow(dpy), 0, NULL);
     XSetFont(dpy, bargc, barfont->fid);
 
