@@ -21,6 +21,10 @@ acpid
 htop
 ripgrep
 
+# загрузчики live-ISO (BIOS + UEFI)
+syslinux
+grub
+
 # установщик lindu-install (live): разметка, ФС, pacstrap, GRUB
 arch-install-scripts
 parted
