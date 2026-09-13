@@ -32,7 +32,7 @@
 #define TAGKEYS(K, T) \
     { MODKEY,                       K, view,       {.ui = 1 << T} }, \
     { MODKEY | ShiftMask,           K, toggletag,  {.ui = 1 << T} }, \
-    { MODKEY | ControlMask,         K, tagclient,  {.ui = 1 << T} }
+    { MODKEY | ControlMask,         K, tagclient,  {.ui = 1 << T} },
 
 #define SHCMD(cmd) { .v = (const char[]){ cmd } }
 

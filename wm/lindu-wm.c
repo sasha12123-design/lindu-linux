@@ -515,14 +515,14 @@ drawbar(Monitor *mon)
         for (c = clients; c; c = c->next)
             if (c->tags & (1 << i))
                 haswin = 1;
-        if (mon->curtag == (1 << i))
+        if (mon->curtag == (1u << i))
             strcat(tagbuf, "[");
         strcat(tagbuf, (i == T1) ? "1" : (i == T2) ? "2" : (i == T3) ? "3"
                : (i == T4) ? "4" : (i == T5) ? "5" : (i == T6) ? "6"
                : (i == T7) ? "7" : (i == T8) ? "8" : "9");
         if (haswin)
             strcat(tagbuf, "*");
-        if (mon->curtag == (1 << i))
+        if (mon->curtag == (1u << i))
             strcat(tagbuf, "]");
         strcat(tagbuf, " ");
     }
