@@ -21,5 +21,7 @@ file_permissions=(
   ["/etc/skel"]="0:0:755"
   ["/usr/local/bin/lindu-wm"]="0:0:755"
   ["/usr/local/bin/lindu-setup.sh"]="0:0:755"
+  ["/usr/local/bin/lindu-install"]="0:0:755"
+  ["/usr/local/bin/lindu-install-gtk"]="0:0:755"
   ["/usr/src/lindu-wm"]="0:0:755"
 )
