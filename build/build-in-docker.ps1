@@ -9,11 +9,12 @@ New-Item -ItemType Directory -Force -Path (Join-Path $Root "out") | Out-Null
 New-Item -ItemType Directory -Force -Path (Join-Path $Root "work") | Out-Null
 
 docker run --rm --privileged `
+    --entrypoint /usr/bin/bash `
     -v "$Root\out:/lindu-out" `
     -v "$Root\work:/lindu-work" `
     -e LINDU_OUT_DIR=/lindu-out `
     -e LINDU_WORK_DIR=/lindu-work `
-    lindu-builder
+    lindu-builder /work/build/build.sh
 
 Write-Host ""
 Write-Host "Готово! ISO в: $(Join-Path $Root 'out')"

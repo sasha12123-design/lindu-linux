@@ -13,11 +13,12 @@ docker build -f "$SCRIPT_DIR/Dockerfile" -t lindu-builder "$ROOT"
 echo "==> Сборка ISO (10-20 минут)"
 mkdir -p "$ROOT/out" "$ROOT/work"
 docker run --rm --privileged \
+    --entrypoint /usr/bin/bash \
     -v "$ROOT/out:/lindu-out" \
     -v "$ROOT/work:/lindu-work" \
     -e LINDU_OUT_DIR=/lindu-out \
     -e LINDU_WORK_DIR=/lindu-work \
-    lindu-builder
+    lindu-builder /work/build/build.sh
 
 echo
 echo "Готово! ISO в: $ROOT/out"
