@@ -1,0 +1,6 @@
+work/
+out/
+*.iso
+*.log
+__pycache__/
+*.pyc

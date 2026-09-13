@@ -1,0 +1,20 @@
+! lindu linux — Xresources
+! палитра lindu (дополняет тему wm)
+
+! терминал (fallback для xterm, alacritty читает свой toml)
+*background: #0b0e12
+*foreground: #d7e3ea
+*color0:     #0b0e12
+*color8:     #4a5560
+*color7:     #d7e3ea
+*color15:    #ffffff
+*color6:     #79d7f0
+*color14:    #79d7f0
+*color4:     #7aa2f7
+*color12:    #7aa2f7
+
+! rofi
+rofi.font:                Monospace 11
+rofi.collection-window-width: 50%
+rofi.drun-display-format: {name}
+rofi.show-icons:          true

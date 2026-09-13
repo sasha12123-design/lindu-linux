@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+# remove from airootfs!
+# Хук pacman: настройка lindu linux в live-среде (выполняется при сборке образа)
+
+[Trigger]
+Operation = Install
+Operation = Upgrade
+Type = Package
+Target = base
+
+[Action]
+Description = lindu linux: настройка пользователя и сервисов
+When = PostTransaction
+Exec = /usr/local/bin/lindu-setup.sh
+Depends = shadow

@@ -1,0 +1,45 @@
+configuration {
+  modi: "drun";
+  drun-display-format: "{name}";
+  show-icons: true;
+  display-columns: 1;
+  display-width: 45;
+  location: 0;
+}
+
+window {
+  location: northwest;
+  width: 55%;
+  anchor: north;
+  padding: 14px;
+  border: 2px;
+  border-radius: 8px;
+  background-color: rgba(11,14,18,0.96);
+  border-color: #79d7f0;
+}
+
+inputbar {
+  background-color: transparent;
+  text-color: #d7e3ea;
+  font: "DejaVu Sans Mono 13";
+}
+
+listview {
+  lines: 10;
+  columns: 1;
+  spacing: 4px;
+  padding: 8px;
+  background-color: transparent;
+  text-color: #d7e3ea;
+}
+
+element {
+  padding: 6px;
+  background-color: transparent;
+  text-color: #d7e3ea;
+}
+
+element selected {
+  background-color: #1a2730;
+  text-color: #79d7f0;
+}

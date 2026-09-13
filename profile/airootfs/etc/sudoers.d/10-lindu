@@ -1,0 +1,3 @@
+# lindu linux: sudo для группы wheel (live-образ)
+# Для продакшена замените на требование пароля
+%wheel ALL=(ALL:ALL) ALL

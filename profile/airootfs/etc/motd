@@ -1,0 +1,14 @@
+lindu linux — собственный дистрибутив на базе Arch
+
+   live-пользователь: lindu / lindu      root: root / lindu
+
+   УСТАНОВКА НА ДИСК:
+     графическая:  lindu-install-gtk   (или пункт «Установка lindu linux» в rofi)
+     текстовая:    sudo lindu-install
+
+   Управление (Mod = Super):
+     Mod+Enter   терминал            Mod+d   запуск программ (rofi)
+     Mod+j/k     фокус окна          Mod+t/m/x  раскладки тайл/монокль/флоат
+     Mod+1..9    рабочие столы       Mod+Shift+q  выход из X
+
+   Справка: `man lindu` (начиная со следующего релиза)

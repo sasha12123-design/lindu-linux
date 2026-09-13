@@ -1,0 +1,251 @@
+#!/usr/bin/env bash
+# lindu-install — установщик дистрибутива lindu linux
+#
+# Интерактивный CLI-мастер: разметка диска, файловая система,
+# установка пакетов (pacstrap), настройка системы (пользователь,
+# загрузчик GRUB, сервисы), установка lindu-wm и конфигов.
+#
+# Запуск (в live-среде, от root):  lindu-install
+
+set -euo pipefail
+
+VERSION="1.1"
+
+# ------------------------------- вывод ----------------------------------
+
+C_RESET=$'\e[0m'; C_BOLD=$'\e[1m'
+C_OK=$'\e[92m'; C_WARN=$'\e[93m'; C_ERR=$'\e[91m'; C_CYAN=$'\e[96m'
+
+log()  { printf "%s\n" "[*] $*"; }
+warn() { printf "%s\n" "${C_WARN}[!]$C_RESET $*"; }
+fail() { printf "%s\n" "${C_ERR}[X]$C_RESET $*"; exit 1; }
+step() { printf "%s\n" "${C_CYAN}==${C_RESET} $*"; }
+
+ask() {
+    local def="$1" msg="$2" ans
+    printf "%s [%s]: " "$msg" "$def"
+    read -r ans
+    printf "%s" "${ans:-$def}"
+}
+
+yesno() {
+    local def="${2:-y}" ans
+    if [ "$def" = y ]; then
+        printf "%s [Y/n]: " "$1"
+    else
+        printf "%s [y/N]: " "$1"
+    fi
+    read -r ans
+    case "${ans:-$def}" in
+        y|Y|yes|Yes|YES) return 0 ;;
+        *) return 1 ;;
+    esac
+}
+
+# ----------------------------- имя раздела ------------------------------
+
+pN() {  # pN /dev/sda 2 -> /dev/sda2 ; pN /dev/nvme0n1 2 -> /dev/nvme0n1p2
+    local d="$1" n="$2"
+    if [[ "$d" =~ nvme|mmcblk ]]; then
+        printf '%s' "${d}p${n}"
+    else
+        printf '%s' "${d}${n}"
+    fi
+}
+
+# ----------------------------- окружение --------------------------------
+
+checkenv() {
+    [ "$(id -u)" -eq 0 ] || fail "Запустите от root (sudo lindu-install)"
+    for tool in pacstrap arch-chroot genfstab parted partprobe mkfs.fat mkfs.ext4; do
+        command -v "$tool" >/dev/null || fail "Нет $tool — обновите live-образ (arch-install-scripts, parted, dosfstools, e2fsprogs)"
+    done
+}
+
+select_disk() {
+    step "Доступные диски:"
+    lsblk -d -o NAME,SIZE,MODEL,TYPE 2>/dev/null | grep -v loop
+    d="$(ask sda 'Введите диск для установки (например: sda или nvme0n1)')"
+    [[ "$d" =~ ^[a-z0-9_]+$ ]] || fail "Некорректное имя диска: $d"
+    DISK="/dev/$d"
+    [ -b "$DISK" ] || fail "Диск $DISK не найден"
+    yesno "ВСЕ данные на $DISK будут уничтожены. Продолжить?" y || fail "Отменено"
+}
+
+# ------------------------------- разметка --------------------------------
+
+partition_disk() {
+    local fs="$1" swap="$2"
+    step "Разметка GPT на $DISK"
+    parted -s "$DISK" mklabel gpt || fail "parted: таблица разделов"
+    # раздел для BIOS-загрузчика (GRUB legacy) — 1 MiB без ФС
+    parted -s "$DISK" mkpart BIOS_GRUB 1MiB 2MiB || fail "parted: BIOS"
+    parted -s "$DISK" set 1 bios_grub on
+    parted -s "$DISK" mkpart ESP fat32 2MiB 514MiB || fail "parted: ESP"
+    parted -s "$DISK" set 2 esp on || fail "parted: ESP flag"
+    parted -s "$DISK" mkpart root "$fs" 514MiB 98% || fail "parted: root"
+    if [ "$swap" = y ]; then
+        parted -s "$DISK" mkpart swap linux-swap 98% 100% \
+            && SWAPDEV="$(pN "$DISK" 4)" \
+            || { warn "swap не создан"; SWAPDEV=""; }
+    else
+        SWAPDEV=""
+    fi
+    ESP="$(pN "$DISK" 2)"
+    ROOTDEV="$(pN "$DISK" 3)"
+    sleep 1
+    partprobe "$DISK" 2>/dev/null || true
+}
+
+mkfs_all() {
+    step "Форматирование: ESP (FAT32)"
+    mkfs.fat -F32 "$ESP" || fail "mkfs.fat на $ESP"
+    if [ -n "${SWAPDEV:-}" ]; then
+        step "Форматирование swap"
+        mkswap "$SWAPDEV" || fail "mkswap"
+    fi
+    if [ "$FS" = btrfs ]; then
+        step "Форматирование root (BTRFS)"
+        mkfs.btrfs -f "$ROOTDEV" || fail "mkfs.btrfs на $ROOTDEV"
+    else
+        step "Форматирование root (EXT4)"
+        mkfs.ext4 -F "$ROOTDEV" || fail "mkfs.ext4 на $ROOTDEV"
+    fi
+}
+
+mount_all() {
+    step "Монтирование"
+    mount "$ROOTDEV" "$MOUNT" || fail "не удалось смонтировать root"
+    mkdir -p "$MOUNT/boot"
+    mount "$ESP" "$MOUNT/boot"
+    [ -n "${SWAPDEV:-}" ] && swapon "$SWAPDEV" 2>/dev/null || true
+}
+
+# ------------------------------- установка ------------------------------
+
+PKGS_BASE=(base linux linux-firmware)
+PKGS_DESKTOP=(
+    base-devel sudo openssh man-db man-pages bash-completion git htop ripgrep vim
+    networkmanager pipewire pipewire-pulse wireplumber
+    xorg-server xorg-xinit xorg-xrandr xorg-xdpyinfo xorg-xsetroot
+    xf86-video-vesa mesa libx11 libxinerama
+    alacritty rofi thunar firefox feh scrot
+    ttf-dejavu ttf-liberation terminus-font noto-fonts
+)
+PKGS_EXTRA=(sof-firmware grub efibootmgr os-prober acpi acpid xdg-utils xdg-user-dirs)
+
+pacstage() {
+    step "pacstrap в $MOUNT (может занять несколько минут)"
+    pacstrap "$MOUNT" "${PKGS_BASE[@]}" "${PKGS_DESKTOP[@]}" "${PKGS_EXTRA[@]}" \
+        || fail "pacstrap не удался — проверьте сеть"
+    genfstab -U "$MOUNT" >> "$MOUNT/etc/fstab"
+}
+
+chroot_setup() {
+    step "Настройка системы в chroot"
+    local hostname tz
+    hostname="$(ask lindu 'Имя хоста')"
+    tz="$(ask 'UTC' 'Часовой пояс (например Europe/Moscow)')"
+    { [ -n "$tz" ] && [ ! -f "/usr/share/zoneinfo/$tz" ] && warn "нет часового пояса $tz — останется UTC"; } || true
+
+    arch-chroot "$MOUNT" /bin/bash <<EOF
+set -euo pipefail
+echo "$hostname" > /etc/hostname
+printf 'KEYMAP=us\n' > /etc/vconsole.conf
+[ -f "/usr/share/zoneinfo/$tz" ] && ln -sf "/usr/share/zoneinfo/$tz" /etc/localtime
+printf 'en_US.UTF-8 UTF-8\nru_RU.UTF-8 UTF-8\n' > /etc/locale.gen
+locale-gen >/dev/null
+printf 'LANG=en_US.UTF-8\nLC_COLLATE=C\n' > /etc/locale.conf
+useradd -m -G wheel,audio,video,storage,power,lp,rfkill -s /bin/bash lindu
+echo "lindu:lindu" | chpasswd
+echo "root:lindu" | chpasswd
+printf '%%wheel ALL=(ALL:ALL) ALL\n' > /etc/sudoers.d/10-lindu
+chmod 440 /etc/sudoers.d/10-lindu
+systemctl enable NetworkManager
+systemctl enable sshd
+EOF
+
+    if yesno 'Задать себе пароли (lindu и root) по шагам? [нет = по умолчанию lindu/lindu]' n; then
+        arch-chroot "$MOUNT" bash -c 'passwd lindu'
+        arch-chroot "$MOUNT" bash -c 'passwd root'
+    fi
+}
+
+install_bootloader() {
+    step "Установка загрузчика GRUB"
+    if [ "$EFI" = 1 ]; then
+        arch-chroot "$MOUNT" /bin/bash <<'EOF'
+set -e
+grub-install --target=x86_64-efi --efi-directory=/boot --bootloader-id=lindu --recheck
+grub-mkconfig -o /boot/grub/grub.cfg
+EOF
+    else
+        arch-chroot "$MOUNT" /bin/bash -c "set -e; grub-install --recheck --no-floppy $DISK; grub-mkconfig -o /boot/grub/grub.cfg"
+    fi
+}
+
+install_lindu() {
+    step "Установка среды lindu (WM + конфиги)"
+    install -d "$MOUNT/usr/local/bin"
+    if [ -f /usr/local/bin/lindu-wm ]; then
+        install -m 0755 /usr/local/bin/lindu-wm "$MOUNT/usr/local/bin/lindu-wm"
+    else
+        warn "бинарника lindu-wm в live не найдено — соберите позже: make -C /usr/src/lindu-wm install"
+    fi
+    [ -f /usr/share/backgrounds/lindu.png ] && install -d "$MOUNT/usr/share/backgrounds" \
+        && install -m 0644 /usr/share/backgrounds/lindu.png "$MOUNT/usr/share/backgrounds/lindu.png" || true
+    cp /etc/os-release "$MOUNT/etc/os-release" 2>/dev/null || true
+    # dotfiles: в /etc/skel для будущих пользователей и в домашнюю папку lindu
+    mkdir -p "$MOUNT/etc/skel"
+    cp -r /etc/skel/. "$MOUNT/etc/skel/" 2>/dev/null || true
+
+    arch-chroot "$MOUNT" /bin/bash <<'EOF'
+set -e
+mkdir -p /etc/systemd/system/getty@tty1.service.d
+printf '[Service]\nExecStart=\nExecStart=-/usr/bin/agetty --autologin lindu --noclear %%I $TERM\n' \
+    > /etc/systemd/system/getty@tty1.service.d/autologin.conf
+cp -a /etc/skel/. /home/lindu/
+chown -R lindu:lindu /home/lindu
+systemctl enable getty@tty1
+EOF
+    log "готово: пользователь lindu, WM lindu, dotfiles, autologin на tty1"
+}
+
+# -------------------------------- main ----------------------------------
+
+main() {
+    MOUNT="${MOUNT:-/mnt}"
+    echo
+    step "lindu-install ${VERSION} — установщик lindu linux"
+    checkenv
+    select_disk
+
+    FS="$(ask ext4 'Файловая система (ext4 или btrfs)')"
+    yesno 'Создать swap-раздел?' n && SWAP=y || SWAP=n
+
+    partition_disk "$FS" "$SWAP"
+    mkfs_all
+    mount_all
+
+    pacstage
+
+    if [ -d /sys/firmware/efi ]; then EFI=1; else EFI=0; fi
+    chroot_setup
+    install_bootloader
+    install_lindu
+
+    step "База установлена!"
+    echo
+    log "  Пользователь:  lindu / lindu"
+    log "  Диск:          $DISK ($FS)"
+    log "  Загрузчик:     GRUB ($([ "$EFI" = 1 ] && echo UEFI || echo BIOS))"
+    echo
+    if yesno 'Перезагрузить сейчас? (выньте носитель)' y; then
+        umount -R "$MOUNT" 2>/dev/null || true
+        reboot
+    else
+        warn "Не забудьте: umount -R $MOUNT"
+    fi
+}
+
+main "$@"

@@ -1,0 +1,564 @@
+#!/usr/bin/env python3
+# lindu-install-gtk — графический установщик дистрибутива lindu linux
+#
+# Мастер (Python + Gtk3): выбор диска, параметры системы, пароли,
+# установка с прогресс-баром и логом. Для работы нужен root и X11.
+#
+# Запуск под X:  lindu-install-gtk   (или пункт меню из rofi)
+# Текстовый вариант: lindu-install
+
+import sys, os, re, subprocess, threading
+
+if os.name != "posix":
+    sys.stderr.write("lindu-install-gtk: работает только на Linux\n")
+    sys.exit(1)
+
+# при необходимости сразу перезапускаемся от root
+if os.geteuid() != 0:
+    for cmd in (["pkexec", sys.argv[0]], ["sudo", "-E", sys.argv[0]]):
+        try:
+            os.execvp(cmd[0], cmd)
+        except OSError:
+            continue
+    sys.stderr.write("нужны права root (pkexec или sudo)\n")
+    sys.exit(1)
+
+import gi
+gi.require_version("Gtk", "3.0")
+from gi.repository import Gtk, GLib
+
+VERSION = "1.0"
+MOUNT = "/mnt"
+
+PKGS_BASE = ["base", "linux", "linux-firmware"]
+PKGS_DESKTOP = [
+    "base-devel", "sudo", "openssh", "man-db", "man-pages", "bash-completion",
+    "git", "htop", "ripgrep", "vim",
+    "networkmanager", "pipewire", "pipewire-pulse", "wireplumber",
+    "xorg-server", "xorg-xinit", "xorg-xrandr", "xorg-xdpyinfo", "xorg-xsetroot",
+    "xf86-video-vesa", "mesa", "libx11", "libxinerama",
+    "alacritty", "rofi", "thunar", "firefox", "feh", "scrot",
+    "ttf-dejavu", "ttf-liberation", "terminus-font", "noto-fonts",
+]
+PKGS_EXTRA = ["sof-firmware", "grub", "efibootmgr", "os-prober", "acpi", "acpid",
+              "xdg-utils", "xdg-user-dirs"]
+
+
+def part_dev(disk, n):
+    return "%sp%d" % (disk, n) if re.search(r"nvme|mmcblk", disk) else "%s%d" % (disk, n)
+
+
+def bq(s):
+    return "'" + str(s).replace("'", "'\\''") + "'"
+
+
+class InstallerWindow(Gtk.ApplicationWindow):
+    def __init__(self, app):
+        super().__init__(application=app, title="Установка lindu linux %s" % VERSION)
+        self.set_default_size(780, 580)
+        self.set_border_width(12)
+        self.props.resizable = False
+        self.tick_id = None
+        self.setup = None
+
+        self.stack = Gtk.Stack()
+        self.stack.props.transition_type = Gtk.StackTransitionType.CROSSFADE
+        self.index = 0
+        self.pages = []
+        self.gates = []
+
+        self.build_intro()
+        self.disk_page = self.build_disk()
+        self.params_page = self.build_params()
+        self.pass_page = self.build_passwords()
+        self.install_page = self.build_install()
+        self.done_page = self.build_done()
+
+        self.bt_back = Gtk.Button(label="_Назад", use_underline=True)
+        self.bt_back.connect("clicked", self.on_back)
+        self.bt_next = Gtk.Button(label="Д_алее", use_underline=True)
+        self.bt_next.get_style_context().add_class(Gtk.STYLE_CLASS_SUGGESTED_ACTION)
+        self.bt_next.connect("clicked", self.on_next)
+
+        hb = Gtk.HeaderBar()
+        hb.set_show_close_button(True)
+        hb.props.title = "lindu linux"
+        hb.props.subtitle = "установка на диск"
+        self.set_titlebar(hb)
+
+        box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
+        box.pack_start(self.stack, True, True, 0)
+        nav = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+        nav.set_halign(Gtk.Align.END)
+        nav.pack_end(self.bt_next, False, False, 0)
+        nav.pack_end(self.bt_back, False, False, 0)
+        box.pack_start(nav, False, False, 6)
+        self.add(box)
+        self.goto(0)
+
+    # ---------- помощники ----------
+
+    def add_page(self, widget, gate=lambda: True):
+        self.pages.append(widget)
+        self.gates.append(gate)
+        self.stack.add_named(widget, "page%d" % len(self.pages))
+        return widget
+
+    @staticmethod
+    def page(title, subtitle=""):
+        b = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12)
+        lbl = Gtk.Label(label="<big><b>%s</b></big>" % Gtk.escape_text(title),
+                        use_markup=True, halign=Gtk.Align.START)
+        b.pack_start(lbl, False, False, 0)
+        if subtitle:
+            s = Gtk.Label(label=subtitle, wrap=True, halign=Gtk.Align.START)
+            b.pack_start(s, False, False, 0)
+        return b
+
+    def goto(self, i):
+        self.index = i
+        self.stack.set_visible_child(self.pages[i])
+        self.bt_back.set_visible(i not in (self.install_idx, self.done_idx))
+        self.bt_next.set_visible(i not in (self.install_idx, self.done_idx))
+        self.bt_next.set_sensitive(i < self.install_idx and self.gates[i]())
+
+    # ---------- страница 0: вступление ----------
+
+    def build_intro(self):
+        self.add_page(self.page(
+            "Добро пожаловать в lindu linux",
+            "Мастер установит дистрибутив на выбранный диск.\n\n"
+            "Разметка GPT: раздел BIOS_GRUB, ESP (EFI), корень (%s) и swap.\n"
+            "Устанавливаются: база Arch, Xorg, звук (PipeWire), рабочий стол lindu,\n"
+            "загрузчик GRUB (UEFI и BIOS).\n\n"
+            "После установки — вход на tty1 без пароля, рабочий стол lindu.\n"
+            "Пользователь: lindu / lindu (по умолчанию)"
+            % ("ext4",)))
+
+    # ---------- страница 1: диск ----------
+
+    def build_disk(self):
+        p = self.page("Выбор диска",
+                      "Все данные на выбранном диске будут уничтожены.")
+        self.store = Gtk.ListStore(str, str)
+        for label, path in self.list_disks():
+            self.store.append([label, path])
+        self.disk_combo = Gtk.ComboBox.new_with_model(self.store)
+        rend = Gtk.CellRendererText()
+        self.disk_combo.pack_start(rend, True)
+        self.disk_combo.add_attribute(rend, "text", 0)
+        if len(self.store):
+            self.disk_combo.set_active(0)
+        self.disk_combo.connect("changed", self.on_disk_changed)
+        row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+        row.pack_start(Gtk.Label(label="Диск:"), False, False, 0)
+        row.pack_start(self.disk_combo, True, True, 0)
+        p.pack_start(row, False, False, 0)
+        self.disk_warn = Gtk.Label(label="", wrap=True, halign=Gtk.Align.START)
+        p.pack_start(self.disk_warn, False, False, 0)
+        self.wipe_yes = Gtk.CheckButton(label="Я понимаю, что данные на диске будут удалены")
+        self.wipe_yes.connect("toggled", lambda w: self.goto(self.index))
+        p.pack_start(self.wipe_yes, False, False, 0)
+        self.on_disk_changed()
+        return self.add_page(p, lambda: self.wipe_yes.get_active())
+
+    def list_disks(self):
+        out = []
+        try:
+            raw = subprocess.check_output(["lsblk", "-d", "-o", "NAME,SIZE,MODEL"],
+                                          text=True, stderr=subprocess.DEVNULL).splitlines()
+        except Exception:
+            return out
+        for line in raw[1:]:
+            cols = line.split(None, 2)
+            if not cols:
+                continue
+            name, size = cols[0], cols[1]
+            if name.startswith(("loop", "zram", "sr")):
+                continue
+            model = cols[2].strip() if len(cols) > 2 else ""
+            out.append(("%s %s %s" % (name, size, model).strip(), "/dev/" + name))
+        return out
+
+    def disk_dev(self):
+        itr = self.disk_combo.get_active_iter()
+        return self.store[itr][1].split("/")[-1] if itr else ""
+
+    def on_disk_changed(self, *a):
+        itr = self.disk_combo.get_active_iter()
+        if itr:
+            self.disk_warn.set_markup('<span color="orange">Будет пересоздан: <b>%s</b></span>'
+                                      % self.store[itr][1])
+
+    # ---------- страница 2: параметры ----------
+
+    def build_params(self):
+        grid = Gtk.Grid(row_spacing=10, column_spacing=14)
+
+        grid.attach(Gtk.Label(label="Файловая система", halign=Gtk.Align.START), 0, 0, 1, 1)
+        self.fs_combo = Gtk.ComboBoxText()
+        self.fs_combo.append_text("ext4")
+        self.fs_combo.append_text("btrfs")
+        self.fs_combo.set_active(0)
+        grid.attach(self.fs_combo, 1, 0, 1, 1)
+
+        grid.attach(Gtk.Label(label="Swap-раздел", halign=Gtk.Align.START), 0, 1, 1, 1)
+        self.swap_sw = Gtk.Switch()
+        grid.attach(self.swap_sw, 1, 1, 1, 1)
+
+        grid.attach(Gtk.Label(label="Имя хоста", halign=Gtk.Align.START), 0, 2, 1, 1)
+        self.host_entry = Gtk.Entry(text="lindu")
+        self.host_entry.connect("changed", lambda w: self.goto(self.index))
+        grid.attach(self.host_entry, 1, 2, 1, 1)
+
+        grid.attach(Gtk.Label(label="Часовой пояс", halign=Gtk.Align.START), 0, 3, 1, 1)
+        self.tz_combo = Gtk.ComboBoxText()
+        for t in ("UTC", "Europe/Moscow", "Europe/Kyiv", "Europe/Minsk",
+                  "Europe/Berlin", "Asia/Almaty", "America/New_York", "Asia/Tokyo"):
+            self.tz_combo.append_text(t)
+        self.tz_combo.set_active(0)
+        grid.attach(self.tz_combo, 1, 3, 1, 1)
+
+        p = self.page("Параметры системы")
+        p.pack_start(grid, False, False, 0)
+        return self.add_page(p, lambda: self.host_entry.get_text().strip() != "")
+
+    # ---------- страница 3: пароли ----------
+
+    def build_passwords(self):
+        p = self.page("Пароли", "По умолчанию: пользователь lindu / lindu, root / lindu.")
+        defrow = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+        defrow.pack_start(Gtk.Label(label="Использовать пароли по умолчанию"), False, False, 0)
+        self.def_sw = Gtk.Switch()
+        self.def_sw.set_active(True)
+        defrow.pack_start(self.def_sw, False, False, 0)
+        p.pack_start(defrow, False, False, 0)
+
+        grid = Gtk.Grid(row_spacing=10, column_spacing=14)
+        grid.attach(Gtk.Label(label="Пользователь lindu", halign=Gtk.Align.START), 0, 0, 1, 1)
+        self.p_lindu = Gtk.Entry(visibility=False)
+        grid.attach(self.p_lindu, 1, 0, 1, 1)
+        grid.attach(Gtk.Label(label="root", halign=Gtk.Align.START), 0, 1, 1, 1)
+        self.p_root = Gtk.Entry(visibility=False)
+        grid.attach(self.p_root, 1, 1, 1, 1)
+        p.pack_start(grid, False, False, 0)
+
+        def sync(*a):
+            for e in (self.p_lindu, self.p_root):
+                e.set_visible(not self.def_sw.get_active())
+                e.set_sensitive(not self.def_sw.get_active())
+            self.goto(self.index)
+        self.def_sw.connect("notify::active", sync)
+        for e in (self.p_lindu, self.p_root):
+            e.connect("changed", lambda w: self.goto(self.index))
+        sync()
+        return self.add_page(p, lambda: self.def_sw.get_active()
+                             or (self.p_lindu.get_text() and self.p_root.get_text()))
+
+    # ---------- страница 4: установка ----------
+
+    def build_install(self):
+        p = self.page("Установка", "Проверьте параметры. Установка займёт несколько минут.")
+        self.bt_start = Gtk.Button(label="Начать установку")
+        self.bt_start.get_style_context().add_class(Gtk.STYLE_CLASS_SUGGESTED_ACTION)
+        self.bt_start.connect("clicked", self.on_start_install)
+        p.pack_start(self.bt_start, False, False, 6)
+
+        self.progress = Gtk.ProgressBar()
+        self.progress.set_show_text(True)
+        p.pack_start(self.progress, False, False, 0)
+
+        self.status = Gtk.Label(label="", wrap=True, halign=Gtk.Align.START)
+        p.pack_start(self.status, False, False, 0)
+
+        sw = Gtk.ScrolledWindow()
+        sw.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
+        sw.set_min_content_height(200)
+        self.log = Gtk.TextView(editable=False, monospace=True)
+        self.log.set_wrap_mode(Gtk.WrapMode.CHAR)
+        self.logbuf = self.log.get_buffer()
+        f = Gtk.Frame(label="Журнал")
+        sw.add(self.log)
+        f.add(sw)
+        p.pack_start(f, True, True, 0)
+
+        self.install_idx = len(self.pages)
+        return self.add_page(p, lambda: False)
+
+    # ---------- страница 5: готово ----------
+
+    def build_done(self):
+        p = self.page("Установка завершена",
+                      "lindu linux установлен. Перезагрузите компьютер "
+                      "(предварительно извлеките носитель).")
+        self.bt_reboot = Gtk.Button(label="Перезагрузить")
+        self.bt_reboot.get_style_context().add_class(Gtk.STYLE_CLASS_SUGGESTED_ACTION)
+        self.bt_reboot.connect("clicked", self.on_reboot)
+        p.pack_start(self.bt_reboot, False, False, 0)
+        self.done_idx = len(self.pages)
+        return self.add_page(p)
+
+    # ---------- навигация ----------
+
+    def on_back(self, w):
+        if self.index > 0:
+            self.goto(self.index - 1)
+
+    def on_next(self, w):
+        if self.index + 1 < len(self.pages):
+            self.goto(self.index + 1)
+
+    def on_reboot(self, w):
+        self.destroy()
+        subprocess.Popen(["umount", "-R", MOUNT])
+        try:
+            os.execvp("reboot", ["reboot", "-f"])
+        except OSError:
+            pass
+
+    # ---------- установка ----------
+
+    def on_start_install(self, w):
+        if not self.disk_combo.get_active_iter():
+            d = Gtk.MessageDialog(transient_for=self,
+                                  message_type=Gtk.MessageType.ERROR,
+                                  buttons=Gtk.ButtonsType.CLOSE,
+                                  text="Диск не выбран")
+            d.format_secondary_text("На странице «Выбор диска» отметьте диск для установки.")
+            d.run()
+            d.destroy()
+            return
+        self.bt_start.set_sensitive(False)
+        self.bt_back.set_sensitive(False)
+        self.setup = self.collect()
+        threading.Thread(target=self.worker, daemon=True).start()
+        self.tick_id = GLib.timeout_add(120, self.tick)
+
+    def collect(self):
+        itr = self.disk_combo.get_active_iter()
+        return dict(
+            disk="/dev/" + self.store[itr][1].split("/")[-1],
+            fs=self.fs_combo.get_active_text(),
+            swap=bool(self.swap_sw.get_active()),
+            host=self.host_entry.get_text().strip(),
+            tz=self.tz_combo.get_active_text(),
+            pl=self.p_lindu.get_text() if not self.def_sw.get_active() else "lindu",
+            pr=self.p_root.get_text() if not self.def_sw.get_active() else "lindu",
+        )
+
+    # — обновления UI безопасные для главного потока —
+
+    def ui_status(self, text=None, frac=None):
+        def _apply():
+            if text is not None and text != self.status.get_text():
+                self.status.set_text(text)
+            if frac is not None:
+                self.progress.set_fraction(max(0.0, min(frac, 1.0)))
+        GLib.idle_add(_apply)
+
+    def ui_log(self, line):
+        GLib.idle_add(self._append_log, line)
+
+    def _append_log(self, line):
+        self.logbuf.insert(self.logbuf.get_end_iter(), line + "\n")
+        adj = self.log.get_vadjustment()
+        adj.set_value(adj.get_upper())
+
+    # — выполнение команд (рабочий поток) —
+
+    def run(self, argv, desc, check=True):
+        self.ui_log("> " + " ".join(str(a) for a in argv))
+        try:
+            pro = subprocess.Popen(argv, stdout=subprocess.PIPE,
+                                   stderr=subprocess.STDOUT, text=True)
+        except OSError as e:
+            self.ui_log("!! %s" % e)
+            GLib.idle_add(self.finish, False, "%s: %s" % (desc, e))
+            raise SystemExit(1)
+        while True:
+            try:
+                line = pro.stdout.readline()
+            except Exception:
+                break
+            if line:
+                self.ui_log(line.rstrip())
+            elif pro.poll() is not None:
+                break
+        for line in pro.stdout:
+            self.ui_log(line.rstrip())
+        code = pro.wait()
+        if check and code != 0:
+            GLib.idle_add(self.finish, False, "Команда завершилась с кодом %d:\n%s" % (code, " ".join(argv)))
+            raise SystemExit(1)
+        return code
+
+    def chroot_run(self, body):
+        path = MOUNT + "/tmp/.lsc"
+        with open(path, "w") as f:
+            f.write(body)
+        try:
+            self.run(["arch-chroot", MOUNT, "/bin/bash", "/tmp/.lsc"],
+                     "chroot", check=True)
+        finally:
+            if os.path.exists(path):
+                os.remove(path)
+
+    def worker(self):
+        try:
+            s = self.setup
+            disk, fs = s["disk"], s["fs"]
+            esp, rootdev = part_dev(disk, 2), part_dev(disk, 3)
+            swapdev = part_dev(disk, 4) if s["swap"] else None
+
+            mklayout = [
+                ["parted", "-s", disk, "mklabel", "gpt"],
+                ["parted", "-s", disk, "mkpart", "BIOS_GRUB", "1MiB", "2MiB"],
+                ["parted", "-s", disk, "set", "1", "bios_grub", "on"],
+                ["parted", "-s", disk, "mkpart", "ESP", "fat32", "2MiB", "514MiB"],
+                ["parted", "-s", disk, "set", "2", "esp", "on"],
+            ]
+            if s["swap"]:
+                mklayout.append(["parted", "-s", disk, "mkpart", "root", fs, "514MiB", "98%"])
+                mklayout.append(["parted", "-s", disk, "mkpart", "swap", "linux-swap", "98%", "100%"])
+            else:
+                mklayout.append(["parted", "-s", disk, "mkpart", "root", fs, "514MiB", "100%"])
+            mklayout.append(["bash", "-c", "sleep 1; partprobe %s || true" % disk])
+
+            fmt = [["mkfs.fat", "-F32", esp]]
+            if swapdev:
+                fmt.append(["mkswap", swapdev])
+            mkroot = ["mkfs.%s" % fs, "-f" if fs == "btrfs" else "-F", rootdev]
+            fmt.append(mkroot)
+
+            mnt = [["mount", rootdev, MOUNT],
+                   ["mkdir", "-p", MOUNT + "/boot"],
+                   ["mount", esp, MOUNT + "/boot"]]
+            if swapdev:
+                mnt.append(["swapon", swapdev])
+
+            total = 9.0
+            self.ui_status("Разметка диска", 0.5 / total)
+            for c in mklayout:
+                self.run(c, "разметка")
+            self.ui_status("Форматирование", 1.5 / total)
+            for c in fmt:
+                self.run(c, "форматирование")
+            self.ui_status("Монтирование", 2.5 / total)
+            for c in mnt:
+                self.run(c, "монтирование")
+
+            self.ui_status("Установка пакетов (pacstrap)...", 3.5 / total)
+            self.run(["pacstrap", MOUNT,
+                      *PKGS_BASE, *PKGS_DESKTOP, *PKGS_EXTRA], "pacstrap")
+            self.run(["bash", "-c", "genfstab -U %s >> %s/etc/fstab" % (MOUNT, MOUNT)], "fstab")
+
+            self.ui_status("Настройка системы", 5.5 / total)
+            self.chroot_setup(s)
+
+            self.ui_status("Загрузчик GRUB", 6.5 / total)
+            self.bootloader(s)
+
+            self.ui_status("Среда lindu", 7.5 / total)
+            self.install_lindu()
+
+            GLib.idle_add(self.finish, True, "")
+        except SystemExit:
+            return
+        except Exception as e:
+            GLib.idle_add(self.finish, False, str(e))
+
+    # — шаги — 
+
+    def chroot_setup(self, s):
+        zone = s["tz"]
+        if zone and not os.path.exists("/usr/share/zoneinfo/" + zone):
+            zone = ""
+        zc = "ln -sf /usr/share/zoneinfo/%s /etc/localtime" % zone if zone else "# tz: utc"
+        body = """set -e
+echo {host} > /etc/hostname
+printf 'KEYMAP=us\\n' > /etc/vconsole.conf
+{zc} || true
+printf 'en_US.UTF-8 UTF-8\\nru_RU.UTF-8 UTF-8\\n' > /etc/locale.gen
+locale-gen >/dev/null
+printf 'LANG=en_US.UTF-8\\nLC_COLLATE=C\\n' > /etc/locale.conf
+useradd -m -G wheel,audio,video,storage,power,lp,rfkill -s /bin/bash lindu
+echo {pl} | chpasswd
+echo {pr} | chpasswd
+printf '%%wheel ALL=(ALL:ALL) ALL\\n' > /etc/sudoers.d/10-lindu
+chmod 440 /etc/sudoers.d/10-lindu
+systemctl enable NetworkManager
+systemctl enable sshd
+""".format(host=bq(s["host"].strip()), zc=zc, pl=bq(s["pl"]), pr=bq(s["pr"]))
+        self.chroot_run(body)
+
+    def bootloader(self, s):
+        if os.path.isdir("/sys/firmware/efi"):
+            self.chroot_run("""set -e
+grub-install --target=x86_64-efi --efi-directory=/boot --bootloader-id=lindu --recheck
+grub-mkconfig -o /boot/grub/grub.cfg
+""")
+        else:
+            self.run(["bash", "-c",
+                      "arch-chroot %s /bin/bash -c 'set -e; grub-install --recheck --no-floppy %s; "
+                      "grub-mkconfig -o /boot/grub/grub.cfg'" % (MOUNT, s["disk"])], "grub")
+
+    def install_lindu(self):
+        if os.path.exists("/usr/local/bin/lindu-wm"):
+            self.run(["install", "-D", "-m755", "/usr/local/bin/lindu-wm",
+                      MOUNT + "/usr/local/bin/lindu-wm"], "lindu-wm")
+        self.run(["bash", "-c", "mkdir -p %s/usr/share/backgrounds && "
+                  "[ -f /usr/share/backgrounds/lindu.png ] || exit 0; "
+                  "install -Dm644 /usr/share/backgrounds/lindu.png "
+                  "%s/usr/share/backgrounds/lindu.png" % (MOUNT, MOUNT)], "обои")
+        self.run(["bash", "-c", "[ -f /etc/os-release ] && cp /etc/os-release "
+                  "%s/etc/os-release || true" % MOUNT], "os-release")
+        self.run(["bash", "-c", "mkdir -p %s/etc/skel && cp -r /etc/skel/. %s/etc/skel/ || true"
+                  % (MOUNT, MOUNT)], "dotfiles")
+        self.chroot_run("""set -e
+mkdir -p /etc/systemd/system/getty@tty1.service.d
+printf '[Service]\\nExecStart=\\nExecStart=-/usr/bin/agetty --autologin lindu --noclear %%I $TERM\\n' \\
+    > /etc/systemd/system/getty@tty1.service.d/autologin.conf
+cp -a /etc/skel/. /home/lindu/
+chown -R lindu:lindu /home/lindu
+systemctl enable getty@tty1
+""")
+
+    def tick(self):
+        self.progress.pulse()
+        return True
+
+    def finish(self, ok, msg):
+        if self.tick_id is not None:
+            GLib.source_remove(self.tick_id)
+            self.tick_id = None
+        self.bt_back.set_sensitive(True)
+        self.ui_status("Готово" if ok else "Ошибка", 1.0 if ok else None)
+        if not ok:
+            d = Gtk.MessageDialog(transient_for=self,
+                                  message_type=Gtk.MessageType.ERROR,
+                                  buttons=Gtk.ButtonsType.CLOSE,
+                                  text="Установка не завершена")
+            d.format_secondary_text(msg or "Смотрите журнал выше.")
+            d.run()
+            d.destroy()
+            self.goto(self.install_idx)
+            return
+        self.goto(self.done_idx)
+
+
+class LinduApp(Gtk.Application):
+    def __init__(self):
+        super().__init__(application_id="org.lindu.installer")
+
+    def do_activate(self):
+        win = InstallerWindow(self)
+        win.show_all()
+
+
+def main():
+    app = LinduApp()
+    app.run(sys.argv)
+
+
+if __name__ == "__main__":
+    main()

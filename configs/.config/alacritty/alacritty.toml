@@ -1,0 +1,27 @@
+# lindu linux — конфиг alacritty
+
+[window]
+  dimensions = { columns = 100, lines = 30 }
+
+  decoration = "none"
+
+  padding = { x = 8, y = 8 }
+
+[font]
+  normal = { family = "DejaVu Sans Mono", style = "Regular" }
+  size = 11
+
+[colors]
+  primary = { background = "#0b0e12", foreground = "#d7e3ea" }
+
+  normal = { black = "#0b0e12", red = "#f7768e", green = "#9ece6a", yellow = "#e0af68",
+             blue = "#7aa2f7", magenta = "#bb9af7", cyan = "#79d7f0", white = "#d7e3ea" }
+
+  bright = { black = "#4a5560", red = "#ff7a93", green = "#b9f27c", yellow = "#ff9e64",
+             blue = "#7da6ff", magenta = "#c0b3f9", cyan = "#84d9f7", white = "#ffffff" }
+
+[selection]
+  save_to_clipboard = true
+
+[shell]
+  program = "/bin/bash"

@@ -1,0 +1,70 @@
+# lindu linux — список пакетов
+# по одному пакету на строку
+
+# ядро и прошивки
+base
+linux
+linux-firmware
+
+# системные инструменты
+base-devel
+git
+sudo
+openssh
+man-db
+man-pages
+bash-completion
+xdg-utils
+xdg-user-dirs
+acpi
+acpid
+htop
+ripgrep
+
+# установщик lindu-install (live): разметка, ФС, pacstrap, GRUB
+arch-install-scripts
+parted
+dosfstools
+e2fsprogs
+btrfs-progs
+efibootmgr
+os-prober
+
+# графический установщик lindu-install-gtk (Python + Gtk3)
+gtk3
+python-gobject
+polkit
+
+# X11 / графика
+xorg-server
+xorg-xinit
+xorg-xrandr
+xorg-xdpyinfo
+xorg-xsetroot
+xf86-video-vesa
+mesa
+
+# звук — Pipewire
+pipewire
+pipewire-pulse
+wireplumber
+
+# сеть
+networkmanager
+
+# приложения для рабочего стола
+alacritty
+rofi
+thunar
+feh
+scrot
+
+# движок оконного менеджера (нужен для сборки lindu-wm при первом запуске)
+libx11
+libxinerama
+
+# шрифты
+ttf-dejavu
+ttf-liberation
+terminus-font
+noto-fonts

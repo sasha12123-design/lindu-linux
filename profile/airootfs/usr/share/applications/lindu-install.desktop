@@ -1,0 +1,15 @@
+[Desktop Entry]
+Type=Application
+Version=1.0
+Name=Lindu Installer
+Name[ru]=Установка lindu linux
+GenericName=Installer
+GenericName[ru]=Установщик системы
+Comment=Install lindu linux to the disk
+Comment[ru]=Установить lindu linux на диск
+Exec=/usr/local/bin/lindu-install-gtk
+Icon=drive-harddisk
+Terminal=false
+Categories=System;Setup;GTK;
+Keywords=install;linux;lindu;
+NoDisplay=false

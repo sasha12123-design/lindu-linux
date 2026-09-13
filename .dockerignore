@@ -1,0 +1,4 @@
+work/
+out/
+.dockerignore
+build/docker-cache
