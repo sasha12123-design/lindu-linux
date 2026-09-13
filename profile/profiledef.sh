@@ -6,6 +6,7 @@ iso_label="LINDU_$(date +%Y%m)"
 iso_publisher="lindu linux <https://lindu.local>"
 iso_application="lindu linux - собственный дистрибутив на базе Arch"
 iso_version="$(date +%Y.%m.%d)"
+install_dir="arch"
 buildmodes=('iso')
 bootmodes=('bios.syslinux' 'uefi.systemd-boot')
 arch="x86_64"

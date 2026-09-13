@@ -65,7 +65,9 @@ cp -f "$PROFILE_SRC/efiboot/loader/entries/02-archiso-speech-linux.conf" "$STAGE
 LABEL="LINDU_$(date +%Y%m)"
 sed -i "s|LINDU_LABEL|$LABEL|g" \
     "$STAGE_DIR/grub/grub.cfg" \
-    "$STAGE_DIR/syslinux/archiso_sys-linux.cfg"
+    "$STAGE_DIR/syslinux/archiso_sys-linux.cfg" \
+    "$STAGE_DIR/efiboot/loader/entries/01-archiso-linux.conf" \
+    "$STAGE_DIR/efiboot/loader/entries/02-archiso-speech-linux.conf"
 sed -i "s|^iso_label=.*|iso_label=\"$LABEL\"|" "$STAGE_DIR/profiledef.sh"
 echo "    метка тома: $LABEL"
 
