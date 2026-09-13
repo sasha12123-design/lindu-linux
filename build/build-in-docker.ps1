@@ -2,7 +2,7 @@
 $Root = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
 
 Write-Host "==> Сборка образа сборщика"
-docker build -t lindu-builder $Root
+docker build -f (Join-Path $PSScriptRoot "Dockerfile") -t lindu-builder $Root
 
 Write-Host "==> Сборка ISO (10-20 минут)"
 New-Item -ItemType Directory -Force -Path (Join-Path $Root "out") | Out-Null

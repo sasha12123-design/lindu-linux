@@ -8,7 +8,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 
 echo "==> Сборка образа сборщика"
-docker build -t lindu-builder "$ROOT"
+docker build -f "$SCRIPT_DIR/Dockerfile" -t lindu-builder "$ROOT"
 
 echo "==> Сборка ISO (10-20 минут)"
 mkdir -p "$ROOT/out" "$ROOT/work"
