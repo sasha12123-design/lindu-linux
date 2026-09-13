@@ -1,0 +1,13 @@
+[Desktop Entry]
+Type=Application
+Version=1.0
+Name=Start Menu
+GenericName=Application menu
+GenericName[ru]=Стартовое меню
+Comment=Open the application menu
+Comment[ru]=Открыть меню приложений
+Exec=rofi -show drun
+Icon=system-run
+Terminal=false
+Categories=System;Utility;
+NoDisplay=false

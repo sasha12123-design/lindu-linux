@@ -1,0 +1,8 @@
+// lindu linux live: разрешаем пользователю lindu запускать графический
+// установщик через pkexec без запроса пароля (live-среда, пароль не нужен).
+polkit.addRule(function(action, subject) {
+    if (action.id == "org.freedesktop.policykit.exec" &&
+        subject.user == "lindu") {
+        return polkit.Result.YES;
+    }
+});

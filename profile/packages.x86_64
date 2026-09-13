@@ -43,13 +43,17 @@ gtk3
 python-gobject
 polkit
 
-# X11 / графика
+# X11 / графика / ввод
 xorg-server
 xorg-xinit
 xorg-xrandr
 xorg-xdpyinfo
 xorg-xsetroot
+xorg-xrdb
+xorg-setxkbmap
+xorg-xhost
 xf86-video-vesa
+xf86-input-libinput
 mesa
 
 # звук — Pipewire
@@ -64,8 +68,13 @@ networkmanager
 alacritty
 rofi
 thunar
+firefox
 feh
 scrot
+
+# панель Windows-стиля (таскбар) и полкит-агент (диалоги авторизации)
+tint2
+polkit-gnome
 
 # движок оконного менеджера (нужен для сборки lindu-wm при первом запуске)
 libx11
@@ -76,3 +85,7 @@ ttf-dejavu
 ttf-liberation
 terminus-font
 noto-fonts
+
+# иконки и минимальный внешний вид GTK
+hicolor-icon-theme
+adwaita-icon-theme

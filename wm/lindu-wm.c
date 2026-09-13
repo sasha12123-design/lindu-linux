@@ -53,6 +53,7 @@ enum {
     NetSupported, NetWMName, NetActiveWindow,
     NetWMState, NetWMFullscreen,
     NetWMWindowType, NetWMWindowTypeDialog,
+    NetWMWindowTypeDock, NetWMWindowTypeDesktop, NetWMWindowTypeUtility,
     NetLast
 };
 static Atom atoms[NetLast];
@@ -60,7 +61,7 @@ static Atom atoms[NetLast];
 static Display *dpy;
 static int screen;
 static int scrw, scrh;
-static int barvisible = 1;
+static int barvisible = 0;
 static int barh;
 static int numlockmask = 0;
 static XFontStruct *barfont;
@@ -253,6 +254,25 @@ addtoclient(Window w)
     c->x = wa.x; c->y = wa.y; c->w = wa.width; c->h = wa.height;
     c->ox = wa.x; c->oy = wa.y; c->ow = wa.width; c->oh = wa.height;
     c->mon = recttomon(c->x + c->w / 2, c->y + c->h / 2);
+
+    /* панели (DOCK/DESKTOP/UTILITY/...) не тайлим — им нужен плавающий режим */
+    {
+        Atom type;
+        int fmt;
+        unsigned long n, after;
+        unsigned char *prop = NULL;
+        if (XGetWindowProperty(dpy, w, atoms[NetWMWindowType], 0, 1,
+                               False, XA_ATOM, &type, &fmt, &n, &after,
+                               &prop) == Success && prop) {
+            Atom t = ((Atom *)prop)[0];
+            XFree(prop);
+            if (t == atoms[NetWMWindowTypeDialog] ||
+                t == atoms[NetWMWindowTypeDock] ||
+                t == atoms[NetWMWindowTypeDesktop] ||
+                t == atoms[NetWMWindowTypeUtility])
+                c->isfloating = 1;
+        }
+    }
 
     c->snext = stack;
     stack = c;
@@ -1072,6 +1092,9 @@ setup(void)
     atoms[NetWMFullscreen]       = XInternAtom(dpy, "_NET_WM_STATE_FULLSCREEN", False);
     atoms[NetWMWindowType]       = XInternAtom(dpy, "_NET_WM_WINDOW_TYPE", False);
     atoms[NetWMWindowTypeDialog] = XInternAtom(dpy, "_NET_WM_WINDOW_TYPE_DIALOG", False);
+    atoms[NetWMWindowTypeDock]   = XInternAtom(dpy, "_NET_WM_WINDOW_TYPE_DOCK", False);
+    atoms[NetWMWindowTypeDesktop]= XInternAtom(dpy, "_NET_WM_WINDOW_TYPE_DESKTOP", False);
+    atoms[NetWMWindowTypeUtility]= XInternAtom(dpy, "_NET_WM_WINDOW_TYPE_UTILITY", False);
     wm_protocols  = XInternAtom(dpy, "WM_PROTOCOLS", False);
     wm_delete     = XInternAtom(dpy, "WM_DELETE_WINDOW", False);
 

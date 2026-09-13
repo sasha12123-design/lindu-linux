@@ -1,3 +1,2 @@
-# lindu linux: sudo для группы wheel (live-образ)
-# Для продакшена замените на требование пароля
-%wheel ALL=(ALL:ALL) ALL
+# lindu linux: доступ sudo для группы wheel (live-среда, без пароля)
+%wheel ALL=(ALL:ALL) NOPASSWD: ALL
