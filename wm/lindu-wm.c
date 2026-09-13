@@ -11,6 +11,9 @@
  * Информация:    lindu-wm -v
  */
 
+#define _POSIX_C_SOURCE 200809L
+#define _DEFAULT_SOURCE
+
 #include <X11/Xlib.h>
 #include <X11/Xutil.h>
 #include <X11/Xatom.h>
@@ -97,6 +100,20 @@ static Monitor *m;              /* активный монитор */
 static Client *clients;
 static Client *stack;
 
+/* аргументы действий и таблица клавиш */
+typedef union {
+    int i;
+    unsigned int ui;
+    const void *v;
+} Arg;
+
+typedef struct {
+    unsigned int mod;
+    KeySym keysym;
+    void (*func)(const Arg *);
+    const Arg arg;
+} Key;
+
 /* ---- прототипы ---- */
 static void die(const char *msg);
 static unsigned long getcolor(const char *name);
@@ -129,20 +146,6 @@ static void resizemaster(const Arg *arg);
 static void incrementx(const Arg *arg);
 static void focusmon(const Arg *arg);
 static void tagmon(const Arg *arg);
-
-/* аргументы действий и таблица клавиш */
-typedef union {
-    int i;
-    unsigned int ui;
-    const void *v;
-} Arg;
-
-typedef struct {
-    unsigned int mod;
-    KeySym keysym;
-    void (*func)(const Arg *);
-    const Arg arg;
-} Key;
 
 /* ---------------- конфигурация (горячие клавиши, цвета) --------------- */
 #include "config.h"
@@ -630,8 +633,8 @@ togglefullscreen(const Arg *arg)
         return;
     c->isfullscreen = !c->isfullscreen;
     if (c->isfullscreen) {
-        XChangeProperty(dpy, c->win, atoms[NetWMState], atoms[NetWMFullscreen],
-                        XA_ATOM, 32, PropModeReplace,
+        XChangeProperty(dpy, c->win, atoms[NetWMState], XA_ATOM, 32,
+                        PropModeReplace,
                         (unsigned char *)&atoms[NetWMFullscreen], 1);
         wc.x = mon->x; wc.y = mon->y;
         wc.width = mon->w; wc.height = mon->h;
