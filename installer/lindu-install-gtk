@@ -110,7 +110,7 @@ class InstallerWindow(Gtk.ApplicationWindow):
     @staticmethod
     def page(title, subtitle=""):
         b = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12)
-        lbl = Gtk.Label(label="<big><b>%s</b></big>" % Gtk.escape_text(title),
+        lbl = Gtk.Label(label="<big><b>%s</b></big>" % GLib.markup_escape_text(title),
                         use_markup=True, halign=Gtk.Align.START)
         b.pack_start(lbl, False, False, 0)
         if subtitle:
