@@ -180,7 +180,7 @@ class InstallerWindow(Gtk.ApplicationWindow):
             if name.startswith(("loop", "zram", "sr")):
                 continue
             model = cols[2].strip() if len(cols) > 2 else ""
-            out.append(("%s %s %s" % (name, size, model).strip(), "/dev/" + name))
+            out.append((("%s %s %s" % (name, size, model)).strip(), "/dev/" + name))
         return out
 
     def disk_dev(self):
