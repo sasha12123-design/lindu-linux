@@ -179,7 +179,7 @@ class InstallerWindow(Gtk.ApplicationWindow):
             if not cols:
                 continue
             name, size = cols[0], cols[1]
-            if name.startswith(("loop", "zram", "sr")):
+            if name.startswith(("loop", "zram", "sr", "fd")):
                 continue
             model = cols[2].strip() if len(cols) > 2 else ""
             out.append((("%s %s %s" % (name, size, model)).strip(), "/dev/" + name))
