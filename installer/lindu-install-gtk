@@ -121,6 +121,8 @@ class InstallerWindow(Gtk.ApplicationWindow):
     def goto(self, i):
         self.index = i
         self.stack.set_visible_child(self.pages[i])
+        if not hasattr(self, "bt_back"):
+            return
         self.bt_back.set_visible(i not in (self.install_idx, self.done_idx))
         self.bt_next.set_visible(i not in (self.install_idx, self.done_idx))
         self.bt_next.set_sensitive(i < self.install_idx and self.gates[i]())
