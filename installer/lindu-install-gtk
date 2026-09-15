@@ -479,6 +479,8 @@ class InstallerWindow(Gtk.ApplicationWindow):
         if zone and not os.path.exists("/usr/share/zoneinfo/" + zone):
             zone = ""
         zc = "ln -sf /usr/share/zoneinfo/%s /etc/localtime" % zone if zone else "# tz: utc"
+        lp = bq("lindu:" + s["pl"])
+        rp = bq("root:" + s["pr"])
         body = """set -e
 echo {host} > /etc/hostname
 printf 'KEYMAP=us\\n' > /etc/vconsole.conf
@@ -487,13 +489,13 @@ printf 'en_US.UTF-8 UTF-8\\nru_RU.UTF-8 UTF-8\\n' > /etc/locale.gen
 locale-gen >/dev/null
 printf 'LANG=en_US.UTF-8\\nLC_COLLATE=C\\n' > /etc/locale.conf
 useradd -m -G wheel,audio,video,storage,power,lp,rfkill -s /bin/bash lindu
-echo {pl} | chpasswd
-echo {pr} | chpasswd
+echo {lp} | chpasswd
+echo {rp} | chpasswd
 printf '%%wheel ALL=(ALL:ALL) ALL\\n' > /etc/sudoers.d/10-lindu
 chmod 440 /etc/sudoers.d/10-lindu
 systemctl enable NetworkManager
 systemctl enable sshd
-""".format(host=bq(s["host"].strip()), zc=zc, pl=bq(s["pl"]), pr=bq(s["pr"]))
+""".format(host=bq(s["host"].strip()), zc=zc, lp=lp, rp=rp)
         self.chroot_run(body)
 
     def bootloader(self, s):
