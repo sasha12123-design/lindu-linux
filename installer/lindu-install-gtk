@@ -398,11 +398,11 @@ class InstallerWindow(Gtk.ApplicationWindow):
         return code
 
     def chroot_run(self, body):
-        path = MOUNT + "/tmp/.lsc"
+        path = MOUNT + "/root/.lsc"
         with open(path, "w") as f:
             f.write(body)
         try:
-            self.run(["arch-chroot", MOUNT, "/bin/bash", "/tmp/.lsc"],
+            self.run(["arch-chroot", MOUNT, "/bin/bash", "/root/.lsc"],
                      "chroot", check=True)
         finally:
             if os.path.exists(path):
