@@ -415,6 +415,11 @@ class InstallerWindow(Gtk.ApplicationWindow):
             esp, rootdev = part_dev(disk, 2), part_dev(disk, 3)
             swapdev = part_dev(disk, 4) if s["swap"] else None
 
+            # очистка от предыдущего запуска (повторная установка/отмонтированный /mnt)
+            self.run(["bash", "-c",
+                      "swapoff -a 2>/dev/null; umount -R %s 2>/dev/null; sync; true" % MOUNT],
+                     "очистка", check=False)
+
             mklayout = [
                 ["parted", "-s", disk, "mklabel", "gpt"],
                 ["parted", "-s", disk, "mkpart", "BIOS_GRUB", "1MiB", "2MiB"],
@@ -455,7 +460,7 @@ class InstallerWindow(Gtk.ApplicationWindow):
             self.ui_status("Установка пакетов (pacstrap)...", 3.5 / total)
             self.run(["pacstrap", MOUNT,
                       *PKGS_BASE, *PKGS_DESKTOP, *PKGS_EXTRA], "pacstrap")
-            self.run(["bash", "-c", "genfstab -U %s >> %s/etc/fstab" % (MOUNT, MOUNT)], "fstab")
+            self.run(["bash", "-c", "genfstab -U %s > %s/etc/fstab" % (MOUNT, MOUNT)], "fstab")
 
             self.ui_status("Настройка системы", 5.5 / total)
             self.chroot_setup(s)
@@ -488,7 +493,7 @@ printf 'KEYMAP=us\\n' > /etc/vconsole.conf
 printf 'en_US.UTF-8 UTF-8\\nru_RU.UTF-8 UTF-8\\n' > /etc/locale.gen
 locale-gen >/dev/null
 printf 'LANG=en_US.UTF-8\\nLC_COLLATE=C\\n' > /etc/locale.conf
-useradd -m -G wheel,audio,video,storage,power,lp,rfkill -s /bin/bash lindu
+id lindu >/dev/null 2>&1 || useradd -m -G wheel,audio,video,storage,power,lp,rfkill -s /bin/bash lindu
 echo {lp} | chpasswd
 echo {rp} | chpasswd
 printf '%%wheel ALL=(ALL:ALL) ALL\\n' > /etc/sudoers.d/10-lindu
@@ -541,11 +546,27 @@ systemctl enable getty@tty1
         self.bt_back.set_sensitive(True)
         self.ui_status("Готово" if ok else "Ошибка", 1.0 if ok else None)
         if not ok:
+            # сохраняем полный журнал для диагностики
+            try:
+                buf = self.logbuf.get_text(self.logbuf.get_start_iter(),
+                                           self.logbuf.get_end_iter(), True)
+                with open("/tmp/lindu-install.log", "w") as f:
+                    f.write(buf)
+            except Exception:
+                pass
             d = Gtk.MessageDialog(transient_for=self,
                                   message_type=Gtk.MessageType.ERROR,
                                   buttons=Gtk.ButtonsType.CLOSE,
                                   text="Установка не завершена")
-            d.format_secondary_text(msg or "Смотрите журнал выше.")
+            tail = msg or ""
+            try:
+                lines = buf.rstrip().splitlines()[-25:]
+                _tl = "\n".join(lines)
+                if tail and _tl and not tail.endswith(_tl):
+                    tail += "\n\n--- журнал (хвост) ---\n" + _tl
+            except Exception:
+                pass
+            d.format_secondary_text(tail or "Смотрите журнал выше. Он сохранён в /tmp/lindu-install.log")
             d.run()
             d.destroy()
             self.goto(self.install_idx)

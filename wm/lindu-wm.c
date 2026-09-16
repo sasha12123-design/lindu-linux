@@ -19,6 +19,7 @@
 #include <X11/Xatom.h>
 #include <X11/XKBlib.h>
 #include <X11/keysym.h>
+#include <X11/cursorfont.h>
 #include <X11/extensions/Xinerama.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -71,6 +72,7 @@ static unsigned long col_bar, col_baract, col_barline, col_bartxt;
 static int running = 1;
 static time_t laststatus = 0;
 static Atom wm_delete, wm_protocols;
+static Cursor cursor;
 
 typedef struct Client Client;
 struct Client {
@@ -153,7 +155,7 @@ static void tagmon(const Arg *arg);
 #include "config.h"
 
 /* --- аргументы для кнопок встроенной панели --- */
-static const Arg arg_rofi = SHCMD("rofi -show drun");
+static const Arg arg_rofi = SHCMD("rofi -show drun -location 7 -yoffset 30 -xoffset 5");
 static const Arg arg_inst = SHCMD("/usr/local/bin/lindu-install-gtk");
 
 /* ----------------------------- утилиты ------------------------------ */
@@ -1056,9 +1058,10 @@ buttonpress(XEvent *e)
     focus(c);
 
     if (be->button == Button1 && CLEANMASK(be->state) == MODKEY) {
+        c->isfloating = 1;
         while (1) {
             XEvent te;
-            XMaskEvent(dpy, PointerMotionMask, &te);
+            XMaskEvent(dpy, PointerMotionMask | ButtonReleaseMask, &te);
             if (te.type == ButtonRelease)
                 break;
             c->x = te.xmotion.x_root - (c->w / 2);
@@ -1066,12 +1069,14 @@ buttonpress(XEvent *e)
             c->ox = c->x; c->oy = c->y;
             XMoveWindow(dpy, c->win, c->x, c->y);
         }
+        arrange();
     } else if (be->button == Button3 && CLEANMASK(be->state) == MODKEY) {
         int sw = c->w, sh = c->h;
+        c->isfloating = 1;
         while (1) {
             XEvent te;
             int dx, dy;
-            XMaskEvent(dpy, PointerMotionMask, &te);
+            XMaskEvent(dpy, PointerMotionMask | ButtonReleaseMask, &te);
             if (te.type == ButtonRelease)
                 break;
             dx = te.xmotion.x_root - be->x_root;
@@ -1079,6 +1084,7 @@ buttonpress(XEvent *e)
             resize(c, c->x, c->y, MAX(sw + dx, MINW), MAX(sh + dy, MINH));
         }
         c->ow = c->w; c->oh = c->h;
+        arrange();
     }
 }
 
@@ -1216,6 +1222,9 @@ setup(void)
     screen = DefaultScreen(dpy);
     scrw = DisplayWidth(dpy, screen);
     scrh = DisplayHeight(dpy, screen);
+
+    cursor = XCreateFontCursor(dpy, XC_left_ptr);
+    XDefineCursor(dpy, DefaultRootWindow(dpy), cursor);
 
     modmap = XGetModifierMapping(dpy);
     for (i = 0; i < 8; i++)

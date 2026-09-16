@@ -115,6 +115,9 @@ mkfs_all() {
 
 mount_all() {
     step "Монтирование"
+    swapoff -a 2>/dev/null || true
+    umount -R "$MOUNT" 2>/dev/null || true
+    sync
     mount "$ROOTDEV" "$MOUNT" || fail "не удалось смонтировать root"
     mkdir -p "$MOUNT/boot"
     mount "$ESP" "$MOUNT/boot"
@@ -138,7 +141,7 @@ pacstage() {
     step "pacstrap в $MOUNT (может занять несколько минут)"
     pacstrap "$MOUNT" "${PKGS_BASE[@]}" "${PKGS_DESKTOP[@]}" "${PKGS_EXTRA[@]}" \
         || fail "pacstrap не удался — проверьте сеть"
-    genfstab -U "$MOUNT" >> "$MOUNT/etc/fstab"
+    genfstab -U "$MOUNT" > "$MOUNT/etc/fstab"
 }
 
 chroot_setup() {
@@ -156,7 +159,7 @@ printf 'KEYMAP=us\n' > /etc/vconsole.conf
 printf 'en_US.UTF-8 UTF-8\nru_RU.UTF-8 UTF-8\n' > /etc/locale.gen
 locale-gen >/dev/null
 printf 'LANG=en_US.UTF-8\nLC_COLLATE=C\n' > /etc/locale.conf
-useradd -m -G wheel,audio,video,storage,power,lp,rfkill -s /bin/bash lindu
+id lindu >/dev/null 2>&1 || useradd -m -G wheel,audio,video,storage,power,lp,rfkill -s /bin/bash lindu
 echo "lindu:lindu" | chpasswd
 echo "root:lindu" | chpasswd
 printf '%%wheel ALL=(ALL:ALL) ALL\n' > /etc/sudoers.d/10-lindu

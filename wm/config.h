@@ -47,7 +47,7 @@
 static Key keys[] = {
     /* запуск программ */
     { MODKEY, XK_Return,        spawn,          SHCMD("alacritty") },
-    { MODKEY, XK_d,             spawn,          SHCMD("rofi -show drun") },
+    { MODKEY, XK_d,             spawn,          SHCMD("rofi -show drun -location 7 -yoffset 30 -xoffset 5") },
     { MODKEY | ShiftMask, XK_b, spawn,          SHCMD("firefox") },
     { MODKEY, XK_e,             spawn,          SHCMD("thunar") },
     { MODKEY, XK_p,             spawn,          SHCMD("scrot ~/Pictures/%Y-%m-%d_%H-%M-%S.png") },
