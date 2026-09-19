@@ -137,7 +137,14 @@ PKGS_DESKTOP=(
 )
 PKGS_EXTRA=(sof-firmware grub efibootmgr os-prober acpi acpid xdg-utils xdg-user-dirs)
 
+prepare_keyring() {
+    step "Подготовка ключей pacman"
+    pacman-key --init >/dev/null 2>&1 || fail "pacman-key --init не удался"
+    pacman-key --populate archlinux >/dev/null 2>&1 || fail "pacman-key --populate не удался"
+}
+
 pacstage() {
+    prepare_keyring
     step "pacstrap в $MOUNT (может занять несколько минут)"
     pacstrap "$MOUNT" "${PKGS_BASE[@]}" "${PKGS_DESKTOP[@]}" "${PKGS_EXTRA[@]}" \
         || fail "pacstrap не удался — проверьте сеть"

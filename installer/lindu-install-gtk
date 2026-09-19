@@ -457,6 +457,10 @@ class InstallerWindow(Gtk.ApplicationWindow):
             for c in mnt:
                 self.run(c, "монтирование")
 
+            self.ui_status("Подготовка ключей pacman...", 2.8 / total)
+            self.run(["pacman-key", "--init"], "ключи pacman")
+            self.run(["pacman-key", "--populate", "archlinux"], "ключи pacman")
+
             self.ui_status("Установка пакетов (pacstrap)...", 3.5 / total)
             self.run(["pacstrap", MOUNT,
                       *PKGS_BASE, *PKGS_DESKTOP, *PKGS_EXTRA], "pacstrap")
