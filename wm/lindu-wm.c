@@ -155,7 +155,7 @@ static void tagmon(const Arg *arg);
 #include "config.h"
 
 /* --- аргументы для кнопок встроенной панели --- */
-static const Arg arg_rofi = SHCMD("rofi -show drun -location 7 -yoffset 30 -xoffset 5");
+static const Arg arg_rofi = SHCMD("rofi -show drun");
 static const Arg arg_inst = SHCMD("/usr/local/bin/lindu-install-gtk");
 
 /* ----------------------------- утилиты ------------------------------ */

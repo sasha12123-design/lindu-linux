@@ -8,9 +8,9 @@ configuration {
 }
 
 window {
-  location: northwest;
+  location: southwest;
   width: 55%;
-  anchor: north;
+  anchor: south;
   padding: 14px;
   border: 2px;
   border-radius: 8px;
