@@ -30,7 +30,7 @@ import gi
 gi.require_version("Gtk", "3.0")
 from gi.repository import Gtk, GLib
 
-VERSION = "1.1"
+VERSION = "1.2"
 MOUNT = "/mnt"
 LOGPATH = "/tmp/lindu-install.log"
 
@@ -564,10 +564,66 @@ class InstallerWindow(Gtk.ApplicationWindow):
             raise SystemExit(1)
         return code
 
+    def check_network(self):
+        """Интернет ДО разметки диска: без сети pacstrap ничего не скачает."""
+        def sh(cmd, timeout=25):
+            try:
+                p = subprocess.run(cmd, stdout=subprocess.PIPE,
+                                   stderr=subprocess.STDOUT, text=True,
+                                   errors="replace", timeout=timeout)
+                return p.returncode, (p.stdout or "").strip()
+            except Exception as e:
+                return 1, "%s: %s" % (type(e).__name__, e)
+
+        self.ui_log("> проверка доступа в интернет")
+        # сеть может быть просто не поднята (в live-образе NM поднимается при загрузке)
+        sh(["systemctl", "start", "NetworkManager"], 20)
+        time.sleep(1.5)
+        rc, links = sh(["ip", "-4", "-o", "addr", "show"], 15)
+        has_ip = any(re.search(r"\binet \d+\.\d+\.\d+\.\d+", l) and " lo " not in l
+                     for l in links.splitlines())
+        rc, out = sh(["curl", "-sS", "-I", "--max-time", "12",
+                      "https://geo.mirror.pkgbuild.com/extra/extra.db"], 25)
+        if rc == 0:
+            self.ui_log("   сеть есть, зеркало Arch доступно")
+            return True, ""
+        tail = (out.splitlines() or ["нет ответа"])[-1]
+        self.ui_log("!! сеть недоступна: %s" % tail[:200])
+        if not has_ip:
+            return False, ("Нет подключения к интернету. Установка невозможна: нужны "
+                           "пакеты из репозитория Arch.\n\nПодключите сетевой кабель "
+                           "или Wi-Fi и нажмите «Установить» ещё раз.\n"
+                           "Диск не тронут: разметка не началась.")
+        return False, ("Интернет не работает: сеть подключена, но зеркало Arch "
+                       "недоступно.\n\nПроверьте интернет и повторите установку.\n"
+                       "Диск не тронут: разметка не началась.")
+
+    def root_ok(self):
+        """В целевой системе должно быть базовое окружение."""
+        return os.path.isdir(MOUNT + "/bin")
+
     def chroot_run(self, body):
-        path = MOUNT + "/root/.lsc"
-        with open(path, "w") as f:
-            f.write(body)
+        if not self.root_ok():
+            GLib.idle_add(self.finish, False,
+                          "Целевая система не заполнена: нет %s/bin.\n"
+                          "Значит, установка пакетов не удалась — чаще всего нет "
+                          "интернета.\nДиск можно использовать повторно." % MOUNT, "")
+            raise SystemExit(1)
+        d = os.path.join(MOUNT, "root")
+        try:
+            os.makedirs(d, exist_ok=True)
+        except Exception as e:
+            GLib.idle_add(self.finish, False,
+                          "Не удалось создать %s: %s" % (d, e), "")
+            raise SystemExit(1)
+        path = os.path.join(d, ".lsc")
+        try:
+            with open(path, "w") as f:
+                f.write(body)
+        except OSError as e:
+            GLib.idle_add(self.finish, False,
+                          "Не удалось записать служебный файл %s: %s" % (path, e), "")
+            raise SystemExit(1)
         try:
             self.run(["arch-chroot", MOUNT, "/bin/bash", "/root/.lsc"],
                      "chroot", check=True)
@@ -575,12 +631,19 @@ class InstallerWindow(Gtk.ApplicationWindow):
             if os.path.exists(path):
                 os.remove(path)
 
+
     def worker(self):
         try:
             s = self.setup
             disk, fs = s["disk"], s["fs"]
             esp, rootdev = part_dev(disk, 2), part_dev(disk, 3)
             swapdev = part_dev(disk, 4) if s["swap"] else None
+
+            self.ui_status("Проверка интернета", 0.15 / 9.0)
+            ok, why = self.check_network()
+            if not ok:
+                GLib.idle_add(self.finish, False, why, "")
+                return
 
             # очистка от предыдущего запуска (повторная установка/отмонтированный /mnt)
             self.run(["bash", "-c",
@@ -631,6 +694,12 @@ class InstallerWindow(Gtk.ApplicationWindow):
             self.ui_status("Установка пакетов (pacstrap)...", 3.5 / total)
             self.run(["pacstrap", MOUNT,
                       *PKGS_BASE, *PKGS_DESKTOP, *PKGS_EXTRA], "pacstrap")
+            if not self.root_ok():
+                GLib.idle_add(self.finish, False,
+                              "Установка пакетов не удалась: в %s нет /bin.\n"
+                              "Чаще всего это отсутствие интернета или недоступное "
+                              "зеркало Arch.\nДиск можно использовать повторно." % MOUNT, "")
+                raise SystemExit(1)
             self.run(["bash", "-c", "genfstab -U %s > %s/etc/fstab" % (MOUNT, MOUNT)], "fstab")
 
             self.ui_status("Настройка системы", 5.5 / total)
