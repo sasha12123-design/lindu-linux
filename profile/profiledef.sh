@@ -23,5 +23,8 @@ file_permissions=(
   ["/usr/local/bin/lindu-setup.sh"]="0:0:755"
   ["/usr/local/bin/lindu-install"]="0:0:755"
   ["/usr/local/bin/lindu-install-gtk"]="0:0:755"
+  ["/usr/local/bin/lindu-install-report"]="0:0:755"
+  ["/usr/lib/lindu"]="0:0:755"
+  ["/usr/lib/lindu/lindu_install_report.py"]="0:0:644"
   ["/usr/src/lindu-wm"]="0:0:755"
 )
