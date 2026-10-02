@@ -87,7 +87,7 @@ install -D -m0755 "$ROOT/installer/lindu-install" \
         "$STAGE_DIR/airootfs/usr/local/bin/lindu-install"
 install -D -m0755 "$ROOT/installer/lindu-install-gtk" \
         "$STAGE_DIR/airootfs/usr/local/bin/lindu-install-gtk"
-install -D -m0755 "$ROOT/installer/lindu-install-report" \
+install -D -m0755 "$ROOT/installer/lindu_install_report.py" \
         "$STAGE_DIR/airootfs/usr/local/bin/lindu-install-report"
 # отчёт об ошибке установки: команда (исполняемая) + модуль для импорта
 install -D -m0644 "$ROOT/installer/lindu_install_report.py" \
