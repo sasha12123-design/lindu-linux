@@ -11,6 +11,69 @@ set -euo pipefail
 
 VERSION="1.1"
 
+# ------------------------------- журнал ----------------------------------
+
+# пишем всё (stdout+stderr) и в окно, и в файл: если установщик зависнет
+# или упадёт, лог останется на диске и будет продублирован на флешку.
+LOGF="/tmp/lindu-install.log"
+: > "$LOGF"
+export LINDU_INSTALL_LOG="$LOGF"
+
+# ------------------------------- отчёт -----------------------------------
+
+# где лежит скрипт отчёта
+report_script() {
+    if [ -x /usr/local/bin/lindu-install-report ]; then
+        printf '%s' /usr/local/bin/lindu-install-report
+    elif [ -f /usr/lib/lindu/lindu_install_report.py ]; then
+        printf '%s' /usr/lib/lindu/lindu_install_report.py
+    else
+        printf '%s' "$(dirname "$(readlink -f "$0")")/lindu_install_report.py"
+    fi
+}
+
+# полный отчёт об ошибке в текстовый файл на внешнем носителе (флешку).
+# Вызывается из fail() и из trap при аварийном выходе.
+dump_report() {
+    local reason="${1:-неизвестная ошибка}"
+    [ -n "${DUMPED:-}" ] && return 0            # уже сохраняли — повтор не нужен
+    DUMPED=1
+    rm -f /tmp/lindu-install.pump
+    echo
+    printf "%s\n" "[!] Собираю полный лог установки и сохраняю на носитель..."
+    local rep stage="${STAGE:-}" disk="${DISK:-}"
+    rep="$(report_script)"
+    if [ ! -f "$rep" ]; then
+        printf "%s\n" "[!] Скрипт отчёта не найден ($rep), отчёт только в $LOGF"
+        return 0
+    fi
+    python3 "$rep" --reason "$reason" --logfile "$LOGF" \
+        --target "$disk" --mount "${MOUNT:-/mnt}" --stage "$stage" \
+        || printf "%s\n" "[!] Не удалось сохранить отчёт (подробности выше)"
+}
+
+# фоновый снимок журнала на носитель каждые 20 с: если установка зависнет
+# (или её придётся прервать), свежий лог всё равно окажется на флешке.
+start_log_pump() {
+    local rep
+    rep="$(report_script)"
+    [ -f "$rep" ] || return 0
+    touch /tmp/lindu-install.pump
+    (
+        while [ -f /tmp/lindu-install.pump ]; do
+            sleep 20
+            python3 "$rep" --flush-only --logfile "$LOGF" \
+                --target "${DISK:-}" --mount "${MOUNT:-/mnt}" >/dev/null 2>&1 || true
+        done
+    ) &
+    disown 2>/dev/null || true
+}
+
+# аварийные случаи: прерывание, ошибка в команде, ненулевой код выхода
+ON_SUCCESS=0
+trap 'rc=$?; rm -f /tmp/lindu-install.pump; [ "$ON_SUCCESS" = 1 ] || dump_report "установщик прерван (код $rc, строка ${BASH_LINENO[0]:-?})"' EXIT
+trap 'dump_report "ошибка в строке $LINENO"' ERR
+
 # ------------------------------- вывод ----------------------------------
 
 C_RESET=$'\e[0m'; C_BOLD=$'\e[1m'
@@ -18,8 +81,11 @@ C_OK=$'\e[92m'; C_WARN=$'\e[93m'; C_ERR=$'\e[91m'; C_CYAN=$'\e[96m'
 
 log()  { printf "%s\n" "[*] $*"; }
 warn() { printf "%s\n" "${C_WARN}[!]$C_RESET $*"; }
-fail() { printf "%s\n" "${C_ERR}[X]$C_RESET $*"; exit 1; }
+fail() { printf "%s\n" "${C_ERR}[X]$C_RESET $*"; dump_report "$*"; exit 1; }
 step() { printf "%s\n" "${C_CYAN}==${C_RESET} $*"; }
+
+# дубль всего вывода в файл журнала
+exec > >(tee -a "$LOGF") 2>&1
 
 ask() {
     local def="$1" msg="$2" ans
@@ -233,17 +299,22 @@ main() {
     FS="$(ask ext4 'Файловая система (ext4 или btrfs)')"
     yesno 'Создать swap-раздел?' n && SWAP=y || SWAP=n
 
-    partition_disk "$FS" "$SWAP"
-    mkfs_all
-    mount_all
+    STAGE="разметка диска";  partition_disk "$FS" "$SWAP"
+    STAGE="форматирование";  mkfs_all
+    STAGE="монтирование";     mount_all
 
+    STAGE="установка пакетов (pacstrap)"
+    start_log_pump
     pacstage
+    rm -f /tmp/lindu-install.pump
 
     if [ -d /sys/firmware/efi ]; then EFI=1; else EFI=0; fi
-    chroot_setup
-    install_bootloader
-    install_lindu
+    STAGE="настройка системы";   chroot_setup
+    STAGE="загрузчик GRUB";     install_bootloader
+    STAGE="среда lindu";         install_lindu
 
+    STAGE="готово"
+    ON_SUCCESS=1
     step "База установлена!"
     echo
     log "  Пользователь:  lindu / lindu"
