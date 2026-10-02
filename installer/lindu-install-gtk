@@ -7,7 +7,7 @@
 # Запуск под X:  lindu-install-gtk   (или пункт меню из rofi)
 # Текстовый вариант: lindu-install
 
-import sys, os, re, subprocess, threading
+import sys, os, re, subprocess, threading, time, select, signal, traceback
 
 if os.name != "posix":
     sys.stderr.write("lindu-install-gtk: работает только на Linux\n")
@@ -30,8 +30,21 @@ import gi
 gi.require_version("Gtk", "3.0")
 from gi.repository import Gtk, GLib
 
-VERSION = "1.0"
+VERSION = "1.1"
 MOUNT = "/mnt"
+LOGPATH = "/tmp/lindu-install.log"
+
+# модуль сбора отчёта об ошибке: сохраняет полный лог на внешний носитель
+# (флешку), чтобы его можно было принести на другой компьютер.
+sys.path.insert(0, "/usr/lib/lindu")
+try:
+    import lindu_install_report as rep
+except ImportError:
+    try:
+        sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+        import lindu_install_report as rep
+    except ImportError:
+        rep = None
 
 PKGS_BASE = ["base", "linux", "linux-firmware"]
 PKGS_DESKTOP = [
@@ -62,7 +75,21 @@ class InstallerWindow(Gtk.ApplicationWindow):
         self.set_border_width(12)
         self.props.resizable = False
         self.tick_id = None
+        self.flush_id = None
         self.setup = None
+        self.stage = ""
+        self.logfh = None
+        self.media = []
+        self.report_lock = threading.Lock()
+        # лог пишем сразу и построчно: если установщик зависнет или упадёт,
+        # файл уже будет на месте и уедет на флешку (см. lindu_install_report)
+        try:
+            self.logfh = open(LOGPATH, "w", encoding="utf-8",
+                              errors="replace", buffering=1)
+            self.logfh.write("lindu-install-gtk %s, старт %s\n"
+                             % (VERSION, time.strftime("%Y-%m-%d %H:%M:%S")))
+        except Exception:
+            self.logfh = None
 
         self.stack = Gtk.Stack()
         self.stack.props.transition_type = Gtk.StackTransitionType.CROSSFADE
@@ -287,6 +314,17 @@ class InstallerWindow(Gtk.ApplicationWindow):
         f.add(sw)
         p.pack_start(f, True, True, 0)
 
+        # кнопка на случай зависания/обрыва: журнал уже пишется на носитель,
+        # но если установщик «залип» — снимок можно сохранить принудительно
+        row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+        self.bt_savelog = Gtk.Button(label="Сохранить журнал на носитель")
+        self.bt_savelog.connect("clicked", self.on_save_log)
+        row.pack_start(self.bt_savelog, False, False, 0)
+        row.pack_start(Gtk.Label(label="флешка/карта памяти с FAT32 — подойдёт любая, "
+                                       "кроме загрузочной", halign=Gtk.Align.START),
+                       True, True, 0)
+        p.pack_start(row, False, False, 0)
+
         self.install_idx = len(self.pages)
         return self.add_page(p, lambda: False)
 
@@ -336,8 +374,18 @@ class InstallerWindow(Gtk.ApplicationWindow):
         self.bt_start.set_sensitive(False)
         self.bt_back.set_sensitive(False)
         self.setup = self.collect()
+        self.log_write("== параметры: %r" % (self.safe_setup(),))
+        self.start_flush()
         threading.Thread(target=self.worker, daemon=True).start()
         self.tick_id = GLib.timeout_add(120, self.tick)
+
+    def safe_setup(self):
+        """Параметры установки без паролей — их не нужно писать на флешку."""
+        s = dict(self.setup or {})
+        for k in ("pl", "pr", "password", "passwd"):
+            if s.get(k):
+                s[k] = "***"
+        return s
 
     def collect(self):
         itr = self.disk_combo.get_active_iter()
@@ -354,6 +402,10 @@ class InstallerWindow(Gtk.ApplicationWindow):
     # — обновления UI безопасные для главного потока —
 
     def ui_status(self, text=None, frac=None):
+        if text is not None and text != self.stage:
+            self.stage = text
+            self.log_write("== %s" % text)
+
         def _apply():
             if text is not None and text != self.status.get_text():
                 self.status.set_text(text)
@@ -361,8 +413,113 @@ class InstallerWindow(Gtk.ApplicationWindow):
                 self.progress.set_fraction(max(0.0, min(frac, 1.0)))
         GLib.idle_add(_apply)
 
+    def log_write(self, line):
+        """Дописать строку в файловый лог (для отчёта и для внешнего носителя)."""
+        fh = self.logfh
+        if fh is None:
+            try:
+                fh = self.logfh = open(LOGPATH, "a", encoding="utf-8",
+                                       errors="replace", buffering=1)
+            except Exception:
+                return
+        try:
+            fh.write(str(line).rstrip("\n") + "\n")
+            fh.flush()
+        except Exception:
+            pass
+
     def ui_log(self, line):
+        self.log_write(line)
         GLib.idle_add(self._append_log, line)
+
+    # ---------- дублирование лога на флешку (на случай зависания) ----------
+
+    def start_flush(self):
+        self.stop_flush()
+        self.flush_id = GLib.timeout_add(5000, self.flush_media)
+
+    def stop_flush(self):
+        if self.flush_id is not None:
+            try:
+                GLib.source_remove(self.flush_id)
+            except Exception:
+                pass
+            self.flush_id = None
+
+    def flush_media(self):
+        """Раз в 5 с кладём свежий лог на все доступные внешние носители."""
+        if rep is None or self.setup is None:
+            return True
+        disk = self.setup.get("disk")
+
+        def job():
+            try:
+                with self.report_lock:
+                    dirs = rep.media_dirs(disk, MOUNT)
+                    if dirs:
+                        self.media = dirs
+                        rep.live_snapshot(LOGPATH, disk, MOUNT, dirs=dirs,
+                                          stage=self.stage, setup=self.safe_setup())
+            except Exception:
+                pass
+
+        threading.Thread(target=job, daemon=True).start()
+        return True
+
+    def on_save_log(self, w):
+        """Кнопка «сохранить лог на носитель» — вручную, без ошибки."""
+        if rep is None:
+            return
+
+        def job():
+            done = {}
+            try:
+                disk = (self.setup or {}).get("disk")
+                dirs = rep.media_dirs(disk, MOUNT)
+                written = []
+                if dirs:
+                    written, _ = rep.live_snapshot(LOGPATH, disk, MOUNT, dirs=dirs,
+                                                   stage=self.stage,
+                                                   setup=self.safe_setup())
+                done = {"written": written or [],
+                        "file": "снимок журнала", "failed": []}
+            except Exception as e:
+                done = {"written": [], "file": "", "failed": [str(e)]}
+            GLib.idle_add(self.show_info, "Журнал сохранён", done)
+        threading.Thread(target=job, daemon=True).start()
+
+    def show_info(self, title, done):
+        paths = done.get("written") or []
+        d = Gtk.MessageDialog(transient_for=self,
+                              message_type=Gtk.MessageType.INFO,
+                              buttons=Gtk.ButtonsType.CLOSE,
+                              text=title)
+        if paths:
+            body = "Журнал установки сохранён:\n" + "\n".join("- " + p for p in paths)
+        else:
+            body = ("Не найдено внешних носителей с файловой системой.\n"
+                    "Вставьте флешку FAT32 и нажмите кнопку ещё раз.")
+        d.format_secondary_text(body)
+        d.run()
+        d.destroy()
+
+    def dump_report_async(self, reason, tb=""):
+        """Собрать полный отчёт об ошибке и сохранить на носители."""
+        def job():
+            disk = (self.setup or {}).get("disk")
+            try:
+                if rep is None:
+                    done = {"written": [LOGPATH], "file": LOGPATH, "failed": []}
+                else:
+                    with self.report_lock:
+                        done = rep.dump(reason=reason, logpath=LOGPATH, target=disk,
+                                        mount=MOUNT, tb=tb, setup=self.safe_setup(),
+                                        stage=self.stage)
+            except Exception as e:
+                done = {"written": [], "file": "", "failed": ["%s" % e]}
+            GLib.idle_add(self.show_error, reason, done)
+
+        threading.Thread(target=job, daemon=True).start()
 
     def _append_log(self, line):
         self.logbuf.insert(self.logbuf.get_end_iter(), line + "\n")
@@ -378,22 +535,32 @@ class InstallerWindow(Gtk.ApplicationWindow):
                                    stderr=subprocess.STDOUT, text=True)
         except OSError as e:
             self.ui_log("!! %s" % e)
-            GLib.idle_add(self.finish, False, "%s: %s" % (desc, e))
+            GLib.idle_add(self.finish, False, "%s: %s" % (desc, e), "")
             raise SystemExit(1)
+        last_out = time.time()
+        warned = False
         while True:
-            try:
-                line = pro.stdout.readline()
-            except Exception:
+            ready, _, _ = select.select([pro.stdout], [], [], 1.0)
+            if not ready:
+                if pro.poll() is not None:
+                    break
+                # процесс молчит: сообщаем, но не мешаем (лог всё равно пишется)
+                if not warned and time.time() - last_out > 120:
+                    warned = True
+                    self.ui_log("!! %s: нет вывода больше 120 с — возможно зависание; "
+                                "журнал продолжает сохраняться на носитель" % desc)
+                continue
+            line = pro.stdout.readline()
+            if not line:
                 break
-            if line:
-                self.ui_log(line.rstrip())
-            elif pro.poll() is not None:
-                break
+            self.ui_log(line.rstrip())
+            last_out = time.time()
+            warned = False
         for line in pro.stdout:
             self.ui_log(line.rstrip())
         code = pro.wait()
         if check and code != 0:
-            GLib.idle_add(self.finish, False, "Команда завершилась с кодом %d:\n%s" % (code, " ".join(argv)))
+            GLib.idle_add(self.finish, False, "Команда завершилась с кодом %d:\n%s" % (code, " ".join(argv)), "")
             raise SystemExit(1)
         return code
 
@@ -479,7 +646,7 @@ class InstallerWindow(Gtk.ApplicationWindow):
         except SystemExit:
             return
         except Exception as e:
-            GLib.idle_add(self.finish, False, str(e))
+            GLib.idle_add(self.finish, False, str(e), traceback.format_exc())
 
     # — шаги — 
 
@@ -543,39 +710,53 @@ systemctl enable getty@tty1
         self.progress.pulse()
         return True
 
-    def finish(self, ok, msg):
+    def finish(self, ok, msg="", tb=""):
         if self.tick_id is not None:
             GLib.source_remove(self.tick_id)
             self.tick_id = None
         self.bt_back.set_sensitive(True)
         self.ui_status("Готово" if ok else "Ошибка", 1.0 if ok else None)
+        self.stop_flush()
         if not ok:
-            # сохраняем полный журнал для диагностики
-            try:
-                buf = self.logbuf.get_text(self.logbuf.get_start_iter(),
-                                           self.logbuf.get_end_iter(), True)
-                with open("/tmp/lindu-install.log", "w") as f:
-                    f.write(buf)
-            except Exception:
-                pass
-            d = Gtk.MessageDialog(transient_for=self,
-                                  message_type=Gtk.MessageType.ERROR,
-                                  buttons=Gtk.ButtonsType.CLOSE,
-                                  text="Установка не завершена")
-            tail = msg or ""
-            try:
-                lines = buf.rstrip().splitlines()[-25:]
-                _tl = "\n".join(lines)
-                if tail and _tl and not tail.endswith(_tl):
-                    tail += "\n\n--- журнал (хвост) ---\n" + _tl
-            except Exception:
-                pass
-            d.format_secondary_text(tail or "Смотрите журнал выше. Он сохранён в /tmp/lindu-install.log")
-            d.run()
-            d.destroy()
-            self.goto(self.install_idx)
+            self.log_write("!! ОШИБКА УСТАНОВКИ: %s" % (msg or "неизвестно"))
+            self.ui_log("!! ОШИБКА УСТАНОВКИ: %s" % (msg or "неизвестно"))
+            self.dump_report_async(msg or "неизвестная ошибка", tb)
             return
         self.goto(self.done_idx)
+
+    def show_error(self, msg, done):
+        try:
+            buf = self.logbuf.get_text(self.logbuf.get_start_iter(),
+                                       self.logbuf.get_end_iter(), True)
+        except Exception:
+            buf = ""
+        d = Gtk.MessageDialog(transient_for=self,
+                              message_type=Gtk.MessageType.ERROR,
+                              buttons=Gtk.ButtonsType.CLOSE,
+                              text="Установка не завершена")
+        body = msg or ""
+        try:
+            tail = "\n".join(buf.rstrip().splitlines()[-20:])
+            if tail and tail not in body:
+                body += "\n\n--- журнал (хвост) ---\n" + tail
+        except Exception:
+            pass
+        paths = list(done.get("written") or [])
+        if paths:
+            body += ("\n\n--- ПОЛНЫЙ ЛОГ СОХРАНЁН В ФАЙЛ ---\n"
+                     "%s\n%s\n\nСкопируйте этот файл на флешку и покажите его "
+                     "(можно просто открыть текстовым редактором)."
+                     % (done.get("file") or "отчёт",
+                        "\n".join("- " + p for p in paths)))
+        else:
+            body += ("\n\nОтчёт удалось сохранить только в оперативной памяти: %s\n"
+                     "Вставьте флешку с FAT32 (или карту памяти) и повторите "
+                     "установку — журнал будет писаться на носитель."
+                     % (done.get("file") or LOGPATH))
+        d.format_secondary_text(body)
+        d.run()
+        d.destroy()
+        self.goto(self.install_idx)
 
 
 class LinduApp(Gtk.Application):
@@ -587,7 +768,35 @@ class LinduApp(Gtk.Application):
         win.show_all()
 
 
+def emergency_dump(reason, tb=""):
+    """Аварийный дамп: GUI упал или процесс убит — пишем отчёт в последний раз."""
+    try:
+        sys.stderr.write("lindu-install-gtk: %s\n" % reason)
+        if rep is not None:
+            rep.dump(reason=reason, logpath=LOGPATH, mount=MOUNT, tb=tb,
+                     stage="аварийное завершение")
+    except Exception:
+        pass
+
+
 def main():
+    def hook(etype, value, tback):
+        try:
+            emergency_dump("необработанное исключение: %s" % value,
+                           "".join(traceback.format_exception(etype, value, tback)))
+        finally:
+            sys.__excepthook__(etype, value, tback)
+    sys.excepthook = hook
+
+    def on_signal(sig, _frm):
+        emergency_dump("установщик остановлен сигналом %d" % sig)
+        os._exit(1)
+    for s in (signal.SIGINT, signal.SIGTERM, signal.SIGHUP):
+        try:
+            signal.signal(s, on_signal)
+        except Exception:
+            pass
+
     app = LinduApp()
     app.run(sys.argv)
 
