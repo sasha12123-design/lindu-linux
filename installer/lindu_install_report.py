@@ -376,6 +376,8 @@ def write_files(text, dirs, stamp=None, fixed=None):
                 with open(os.path.join(d, "INSTALL-ERROR.txt"), "w",
                           encoding="utf-8", errors="replace") as f:
                     f.write(text)
+                    f.flush()
+                    os.fsync(f.fileno())
             except Exception:
                 pass
     return fname, written, failed
