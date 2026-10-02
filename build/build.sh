@@ -81,17 +81,22 @@ mkdir -p "$STAGE_DIR/airootfs/usr/src/lindu-wm"
 cp -a "$WM_DIR/." "$STAGE_DIR/airootfs/usr/src/lindu-wm/"
 
 # установщик lindu linux (CLI + GTK) и сборщик отчётов об ошибке
-mkdir -p "$STAGE_DIR/airootfs/usr/local/bin" \
-         "$STAGE_DIR/airootfs/usr/lib/lindu"
-cp -f "$ROOT/installer/lindu-install"     "$STAGE_DIR/airootfs/usr/local/bin/lindu-install"
-cp -f "$ROOT/installer/lindu-install-gtk" "$STAGE_DIR/airootfs/usr/local/bin/lindu-install-gtk"
-# отчёт об ошибке установки: модуль для импорта + одноимённая команда
-cp -f "$ROOT/installer/lindu_install_report.py" "$STAGE_DIR/airootfs/usr/lib/lindu/lindu_install_report.py"
-cp -f "$ROOT/installer/lindu_install_report.py" "$STAGE_DIR/airootfs/usr/local/bin/lindu-install-report"
-chmod 0755 "$STAGE_DIR/airootfs/usr/local/bin/lindu-install" \
-           "$STAGE_DIR/airootfs/usr/local/bin/lindu-install-gtk" \
-           "$STAGE_DIR/airootfs/usr/local/bin/lindu-install-report" \
-           "$STAGE_DIR/airootfs/usr/lib/lindu/lindu_install_report.py"
+# install -D -m: копируем сразу с нужными правами — не зависит ни от umask,
+# ни от прав в git (у файлов в репозитории стоит 0644).
+install -D -m0755 "$ROOT/installer/lindu-install" \
+        "$STAGE_DIR/airootfs/usr/local/bin/lindu-install"
+install -D -m0755 "$ROOT/installer/lindu-install-gtk" \
+        "$STAGE_DIR/airootfs/usr/local/bin/lindu-install-gtk"
+install -D -m0755 "$ROOT/installer/lindu-install-report" \
+        "$STAGE_DIR/airootfs/usr/local/bin/lindu-install-report"
+# отчёт об ошибке установки: команда (исполняемая) + модуль для импорта
+install -D -m0644 "$ROOT/installer/lindu_install_report.py" \
+        "$STAGE_DIR/airootfs/usr/lib/lindu/lindu_install_report.py"
+# контроль прав (в образе их перепроверяет ещё file_permissions в profiledef.sh)
+for f in lindu-install lindu-install-gtk lindu-install-report; do
+    chmod 0755 "$STAGE_DIR/airootfs/usr/local/bin/$f"
+    stat -c '    права: %a %n' "$STAGE_DIR/airootfs/usr/local/bin/$f"
+done
 
 echo "==> Сборка lindu-wm (C/Xlib)"
 make -C "$WM_DIR" clean >/dev/null 2>&1 || true
