@@ -9,7 +9,7 @@
 
 set -euo pipefail
 
-VERSION="1.1"
+VERSION="1.2"
 
 # ------------------------------- журнал ----------------------------------
 
@@ -128,6 +128,25 @@ checkenv() {
     done
 }
 
+check_network() {
+    step "Проверка доступа в интернет (без сети установка невозможна)"
+    systemctl start NetworkManager >/dev/null 2>&1 || true
+    sleep 1
+    local has_ip=0
+    if ip -4 -o addr show 2>/dev/null | grep -v " lo " | grep -qE "inet [0-9]+\.[0-9]+\.[0-9]+\.[0-9]+"; then
+        has_ip=1
+    fi
+    if curl -sS -I --max-time 12 https://geo.mirror.pkgbuild.com/extra/extra.db >/dev/null 2>&1; then
+        printf "%s\n" "${C_OK}[+]${C_RESET} сеть есть, зеркало Arch доступно"
+        return 0
+    fi
+    if [ "$has_ip" -eq 0 ]; then
+        fail "Нет подключения к интернету. Подключите кабель или Wi-Fi и повторите. Диск не тронут."
+    fi
+    fail "Интернет не работает: зеркало Arch недоступно. Проверьте сеть и повторите. Диск не тронут."
+}
+
+
 select_disk() {
     step "Доступные диски:"
     lsblk -d -o NAME,SIZE,MODEL,TYPE 2>/dev/null | grep -v loop
@@ -214,6 +233,7 @@ pacstage() {
     step "pacstrap в $MOUNT (может занять несколько минут)"
     pacstrap "$MOUNT" "${PKGS_BASE[@]}" "${PKGS_DESKTOP[@]}" "${PKGS_EXTRA[@]}" \
         || fail "pacstrap не удался — проверьте сеть"
+    [ -x "$MOUNT/bin/bash" ] || fail "pacstrap отработал, но в $MOUNT нет /bin/bash — целевая система не заполнена"
     genfstab -U "$MOUNT" > "$MOUNT/etc/fstab"
 }
 
@@ -295,6 +315,8 @@ main() {
     step "lindu-install ${VERSION} — установщик lindu linux"
     checkenv
     select_disk
+    STAGE="проверка сети";      check_network
+
 
     FS="$(ask ext4 'Файловая система (ext4 или btrfs)')"
     yesno 'Создать swap-раздел?' n && SWAP=y || SWAP=n
