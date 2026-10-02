@@ -80,12 +80,18 @@ cp -a "$CONFIGS_DIR/." "$STAGE_DIR/airootfs/etc/skel/"
 mkdir -p "$STAGE_DIR/airootfs/usr/src/lindu-wm"
 cp -a "$WM_DIR/." "$STAGE_DIR/airootfs/usr/src/lindu-wm/"
 
-# установщик lindu linux (CLI + GTK)
-mkdir -p "$STAGE_DIR/airootfs/usr/local/bin"
+# установщик lindu linux (CLI + GTK) и сборщик отчётов об ошибке
+mkdir -p "$STAGE_DIR/airootfs/usr/local/bin" \
+         "$STAGE_DIR/airootfs/usr/lib/lindu"
 cp -f "$ROOT/installer/lindu-install"     "$STAGE_DIR/airootfs/usr/local/bin/lindu-install"
 cp -f "$ROOT/installer/lindu-install-gtk" "$STAGE_DIR/airootfs/usr/local/bin/lindu-install-gtk"
+# отчёт об ошибке установки: модуль для импорта + одноимённая команда
+cp -f "$ROOT/installer/lindu_install_report.py" "$STAGE_DIR/airootfs/usr/lib/lindu/lindu_install_report.py"
+cp -f "$ROOT/installer/lindu_install_report.py" "$STAGE_DIR/airootfs/usr/local/bin/lindu-install-report"
 chmod 0755 "$STAGE_DIR/airootfs/usr/local/bin/lindu-install" \
-           "$STAGE_DIR/airootfs/usr/local/bin/lindu-install-gtk"
+           "$STAGE_DIR/airootfs/usr/local/bin/lindu-install-gtk" \
+           "$STAGE_DIR/airootfs/usr/local/bin/lindu-install-report" \
+           "$STAGE_DIR/airootfs/usr/lib/lindu/lindu_install_report.py"
 
 echo "==> Сборка lindu-wm (C/Xlib)"
 make -C "$WM_DIR" clean >/dev/null 2>&1 || true
