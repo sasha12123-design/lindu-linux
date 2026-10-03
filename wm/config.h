@@ -11,10 +11,11 @@
 
 /* ---------------------------- панель ---------------------------------- */
 
-#define BARH      30                 /* высота панели в пикселях   */
-#define PADDING_X 8
-#define PADDING_Y 7
-#define FONT      "-*-terminus-medium-r-normal-*-14-*-*-*-*-*-*-*"
+#define BARH      34                 /* высота панели в пикселях   */
+#define PADDING_X 12
+#define PADDING_Y 11
+#define FONT      "-*-terminus-medium-r-normal-*-14-*-*-*-*-*-*-*"   /* запас */
+#define FONT_XFT  "DejaVu Sans:size=13"                            /* панель */
 
 #define START_W   46                 /* ширина кнопки «Пуск»        */
 #define INST_W    46                 /* ширина кнопки установщика   */
