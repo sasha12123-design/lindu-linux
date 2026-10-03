@@ -80,6 +80,7 @@ libx11
 libxinerama
 libxft
 fontconfig
+freetype2
 
 # шрифты
 ttf-dejavu
