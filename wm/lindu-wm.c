@@ -584,6 +584,17 @@ baricon(Monitor *mon, int cx, int cy, int kind)
                      180 * 64, 60 * 64);
         }
         XFillRectangle(dpy, mon->barwin, bargc, cx - 2, cy + 6, 4, 4);
+    } else if (kind == 4) {
+        /* крестик: закрыть активное окно */
+        XSetForeground(dpy, bargc, col_bartxt);
+        XFillRectangle(dpy, mon->barwin, bargc, cx - 6, cy - 3, 3, 3);
+        XFillRectangle(dpy, mon->barwin, bargc, cx - 4, cy - 1, 3, 3);
+        XFillRectangle(dpy, mon->barwin, bargc, cx - 2, cy + 1, 3, 3);
+        XFillRectangle(dpy, mon->barwin, bargc, cx - 5, cy + 2, 3, 3);
+        XFillRectangle(dpy, mon->barwin, bargc, cx - 3, cy + 4, 3, 3);
+        XFillRectangle(dpy, mon->barwin, bargc, cx - 1, cy + 2, 3, 3);
+        XFillRectangle(dpy, mon->barwin, bargc, cx + 1, cy + 0, 3, 3);
+        XFillRectangle(dpy, mon->barwin, bargc, cx + 3, cy - 2, 3, 3);
     } else {
         XFillRectangle(dpy, mon->barwin, bargc, cx - 2, cy - 9, 4, 11);
         XFillRectangle(dpy, mon->barwin, bargc, cx - 7, cy + 2, 14, 4);
@@ -612,7 +623,7 @@ bartasks(Monitor *mon)
 {
     Client *c;
     int n = barcount(mon);
-    int x0 = START_W + INST_W + WIFI_W;
+    int x0 = START_W + INST_W + WIFI_W + CLOSE_W;
     int x1 = mon->w - CLOCK_W;
     int tw, i = 0;
 
@@ -674,6 +685,9 @@ drawbar(Monitor *mon)
     barbutton(mon, 0, START_W, 0, 1);              /* Пуск → меню приложений */
     barbutton(mon, START_W, START_W + INST_W, 0, 2); /* установщик          */
     barbutton(mon, START_W + INST_W, START_W + INST_W + WIFI_W, 0, 3); /* Wi-Fi */
+    /* закрыть активное окно */
+    barbutton(mon, START_W + INST_W + WIFI_W,
+              START_W + INST_W + WIFI_W + CLOSE_W, 0, 4);
     bartasks(mon);
     barclock(mon);
     XFlush(dpy);
@@ -698,10 +712,14 @@ barclick(Monitor *mon, int x)
         spawn(&arg_wifi);
         return;
     }
+    if (x < START_W + INST_W + WIFI_W + CLOSE_W) {
+        killclient(NULL);
+        return;
+    }
     n = barcount(mon);
     if (!n)
         return;
-    x0 = START_W + INST_W + WIFI_W;
+    x0 = START_W + INST_W + WIFI_W + CLOSE_W;
     x1 = mon->w - CLOCK_W;
     tw = (x1 - x0) / n;
     if (tw < 50)
@@ -1130,16 +1148,17 @@ unmapnotify(XEvent *e)
     XUnmapEvent *ev = &e->xunmap;
     Client **cp, *c;
 
-    if (ev->send_event) {
-        for (cp = &clients; *cp; cp = &(*cp)->next)
-            if ((*cp)->win == ev->window)
-                break;
-        if (*cp) {
-            c = *cp;
-            removeclient(c);
-            unfocus(c);
-            arrange();
-        }
+    /* Окно закрыто или просто скрыто — в любом случае убираем клиента.
+     * Раньше это делалось только для синтетических событий, из-за чего закрытые
+     * окна навсегда оставались в списке, а обращения к ним роняли менеджер. */
+    for (cp = &clients; *cp; cp = &(*cp)->next)
+        if ((*cp)->win == ev->window)
+            break;
+    if (*cp) {
+        c = *cp;
+        removeclient(c);
+        unfocus(c);
+        arrange();
     }
 }
 
@@ -1218,6 +1237,18 @@ enternotify(XEvent *e)
     if (ce->window != focuswin)
         focus(c);
 }
+
+/* Ошибки X (например, обращение к уже закрытому окну) не должны убивать
+ * оконный менеджер: иначе закрытие приложения обрывает всю сессию и рабочий
+ * стол перезапускается. */
+static int
+xerrorhandler(Display *dpy, XErrorEvent *e)
+{
+    (void)dpy;
+    (void)e;
+    return 0;
+}
+
 
 static void
 run(void)
@@ -1355,6 +1386,7 @@ main(int argc, char *argv[])
     signal(SIGCHLD, SIG_IGN);
     if (!(dpy = XOpenDisplay(NULL)))
         die("не удалось открыть дисплей X");
+    XSetErrorHandler(xerrorhandler);
 
     /* окружение рабочего стола объявляем сами: приложения, запущенные из
      * оконного менеджера, получают эти переменные независимо от того,
