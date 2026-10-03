@@ -1305,7 +1305,7 @@ buttonpress(XEvent *e)
         int moving = (CLEANMASK(be->state) == MODKEY);
         int dragging = 0;
         Window root = DefaultRootWindow(dpy), rr, ch;
-        int rx, ry, wx, wy;
+        int rx, ry, wx, wy, mask;
         XEvent te;
         time_t started = time(NULL);
 
@@ -1317,9 +1317,9 @@ buttonpress(XEvent *e)
             if (XCheckMaskEvent(dpy, ButtonReleaseMask, &te))
                 break;
 
-            if (!XQueryPointer(dpy, root, &rr, &ch, &rx, &ry, &wx, &wy)) {
+            if (!XQueryPointer(dpy, root, &rr, &ch, &rx, &ry, &wx, &wy, &mask)) {
                 XSync(dpy, False);
-                if (!XQueryPointer(dpy, root, &rr, &ch, &rx, &ry, &wx, &wy))
+                if (!XQueryPointer(dpy, root, &rr, &ch, &rx, &ry, &wx, &wy, &mask))
                     break;
             }
 
@@ -1332,7 +1332,8 @@ buttonpress(XEvent *e)
                 if (!dragging) {
                     XGrabPointer(dpy, c->win, False,
                                  ButtonReleaseMask | PointerMotionMask,
-                                 GrabModeAsync, GrabModeAsync, None, None);
+                                 GrabModeAsync, GrabModeAsync, None, None,
+                                 CurrentTime);
                     dragging = 1;
                 }
                 c->x = rx - dx0;
