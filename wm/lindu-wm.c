@@ -130,7 +130,7 @@ static void removeclient(Client *c);
 static void focus(Client *c);
 static void unfocus(Client *gone);
 static void drawbar(Monitor *mon);
-static void setstate(Client *c, int state);
+static void clientstate(Client *c, int state);
 static void arrange(void);
 static void resize(Client *c, int x, int y, int w, int h);
 static void applysize(Client *c, XWindowChanges *wc, int n);
@@ -635,6 +635,38 @@ barbutton(Monitor *mon, int x0, int x1, int active, int kind)
 }
 
 /* список открытых окон (задачи) */
+/* Ширина текста панели в пикселях. */
+static int
+bartextwidth(const char *s, int len)
+{
+    XftTextExtents ext;
+
+    if (len <= 0 || !barxft)
+        return 0;
+    if (XftTextExtents8(dpy, barxft, (const FcChar8 *)s, len, &ext))
+        return 0;
+    return (int)ext.xAdvance;
+}
+
+/* Текст панели: Xft рисует через XftDraw, а не напрямую через окно. */
+static void
+bardrawtext(Monitor *mon, int x, int y, const char *s, int len)
+{
+    XftDraw *dr;
+    XftColor color;
+
+    if (!barxft || len <= 0)
+        return;
+    dr = XftDrawCreate(dpy, mon->barwin, DefaultVisual(dpy, screen),
+                       DefaultColormap(dpy, screen));
+    if (!dr)
+        return;
+    XftColorAllocValue(dpy, DefaultVisual(dpy, screen),
+                       DefaultColormap(dpy, screen), col_bartxt, &color);
+    XftDrawString8(dr, &color, barxft, x, y, (const FcChar8 *)s, len);
+    XftDrawDestroy(dr);
+}
+
 static void
 bartasks(Monitor *mon)
 {
@@ -663,10 +695,9 @@ bartasks(Monitor *mon)
         tt = bartitle(c);
         tl = (int)strlen(tt);
         maxw = tw - 14;
-        while (tl > 1 && XftTextWidth8(dpy, barxft, (FcChar8 *)tt, tl) > maxw)
+        while (tl > 1 && bartextwidth(tt, tl) > maxw)
             tl--;
-        XftDrawString8(dpy, mon->barwin, col_bartxt, barxft, x0 + i * tw + 7,
-                       barh - PADDING_Y, (FcChar8 *)tt, tl);
+        bardrawtext(mon, x0 + i * tw + 7, barh - PADDING_Y, tt, tl);
         i++;
     }
 }
@@ -684,9 +715,8 @@ barclock(Monitor *mon)
     tm = localtime(&tmnow);
     snprintf(buf, sizeof(buf), "%02d:%02d %02d.%02d",
              tm->tm_hour, tm->tm_min, tm->tm_mday, tm->tm_mon + 1);
-    w = XftTextWidth8(dpy, barxft, (FcChar8 *)buf, (int)strlen(buf));
-    XftDrawString8(dpy, mon->barwin, col_bartxt, barxft, mon->w - w - PADDING_X,
-                   barh - PADDING_Y, (FcChar8 *)buf, (int)strlen(buf));
+    w = bartextwidth(buf, (int)strlen(buf));
+    bardrawtext(mon, mon->w - w - PADDING_X, barh - PADDING_Y, buf, (int)strlen(buf));
 }
 
 static void
@@ -713,10 +743,6 @@ drawbar(Monitor *mon)
 }
 
 /* клик по панели: Пуск / установщик / переключение задач */
-/* двойной щелчок по кнопке задачи */
-static Window lastbarwin = None;
-static long lastbarms = 0;
-
 /* двойной щелчок по кнопке задачи */
 static Window lastbarwin = None;
 static long lastbarms = 0;
@@ -758,7 +784,7 @@ barclick(Monitor *mon, int x)
             /* свёрнутое окно — разворачиваем, затем поднимаем;
              * повторный щелчок в течение 0.4 с — во весь экран */
             if (c->ishidden)
-                setstate(c, NormalState);
+                clientstate(c, NormalState);
             focus(c);
             {
                 struct timeval tv;
@@ -1111,12 +1137,11 @@ grabkeys(void)
     }
 }
 
-static void
 /* сворачивание и разворачивание окна средствами менеджера */
 static void
-setstate(Client *c, int state)
+clientstate(Client *c, int state)
 {
-    XChangeProperty(dpy, c->win, wm_state, XA_WM_STATE, 32, PropModeReplace,
+    XChangeProperty(dpy, c->win, wm_state, wm_state, 32, PropModeReplace,
                     (unsigned char *)&state, 1);
     if (state == IconicState) {
         c->ishidden = 1;
@@ -1148,7 +1173,7 @@ clientmessage(XEvent *e)
     /* свернуть */
     if (ev->message_type == wm_change_state && ev->data.l[0] == IconicState) {
         if (!c->ishidden) {
-            setstate(c, IconicState);
+            clientstate(c, IconicState);
             arrange();
             drawbar(m);
         }
@@ -1178,9 +1203,9 @@ clientmessage(XEvent *e)
 
     if (a1 == atoms[NetWMStateHidden] || a2 == atoms[NetWMStateHidden]) {
         if (action != 0)
-            setstate(c, IconicState);
+            clientstate(c, IconicState);
         else {
-            setstate(c, NormalState);
+            clientstate(c, NormalState);
             focus(c);
         }
         arrange();
@@ -1189,6 +1214,7 @@ clientmessage(XEvent *e)
 }
 
 
+static void
 maprequest(XEvent *e)
 {
     XMapRequestEvent *ev = &e->xmaprequest;
