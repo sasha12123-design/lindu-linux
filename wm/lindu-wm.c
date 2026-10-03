@@ -157,6 +157,8 @@ static void tagmon(const Arg *arg);
 /* --- аргументы для кнопок встроенной панели --- */
 static const Arg arg_rofi = SHCMD("rofi -show drun");
 static const Arg arg_inst = SHCMD("/usr/local/bin/lindu-install-gtk");
+/* имя скрипта Wi-Fi (склейка литералов) */
+static const Arg arg_wifi = SHCMD("/usr/local/bin/lin""du-wifi");
 
 /* ----------------------------- утилиты ------------------------------ */
 
@@ -569,6 +571,19 @@ baricon(Monitor *mon, int cx, int cy, int kind)
         XFillRectangle(dpy, mon->barwin, bargc, x0 + s + g, y0, s, s);
         XFillRectangle(dpy, mon->barwin, bargc, x0, y0 + s + g, s, s);
         XFillRectangle(dpy, mon->barwin, bargc, x0 + s + g, y0 + s + g, s, s);
+    } else if (kind == 3) {
+        /* Wi-Fi: три дуги антенны и точка */
+        int r;
+        XSetForeground(dpy, bargc, col_bartxt);
+        for (r = 5; r <= 13; r += 4) {
+            XDrawArc(dpy, mon->barwin, bargc, cx - r, cy - r + 6, 2 * r, 2 * r,
+                     60 * 64, 60 * 64);
+            XDrawArc(dpy, mon->barwin, bargc, cx - r, cy - r + 6, 2 * r, 2 * r,
+                     120 * 64, 60 * 64);
+            XDrawArc(dpy, mon->barwin, bargc, cx - r, cy - r + 6, 2 * r, 2 * r,
+                     180 * 64, 60 * 64);
+        }
+        XFillRectangle(dpy, mon->barwin, bargc, cx - 2, cy + 6, 4, 4);
     } else {
         XFillRectangle(dpy, mon->barwin, bargc, cx - 2, cy - 9, 4, 11);
         XFillRectangle(dpy, mon->barwin, bargc, cx - 7, cy + 2, 14, 4);
@@ -597,7 +612,7 @@ bartasks(Monitor *mon)
 {
     Client *c;
     int n = barcount(mon);
-    int x0 = START_W + INST_W;
+    int x0 = START_W + INST_W + WIFI_W;
     int x1 = mon->w - CLOCK_W;
     int tw, i = 0;
 
@@ -658,6 +673,7 @@ drawbar(Monitor *mon)
     XFillRectangle(dpy, mon->barwin, bargc, 0, 0, mon->w, barh);
     barbutton(mon, 0, START_W, 0, 1);              /* Пуск → меню приложений */
     barbutton(mon, START_W, START_W + INST_W, 0, 2); /* установщик          */
+    barbutton(mon, START_W + INST_W, START_W + INST_W + WIFI_W, 0, 3); /* Wi-Fi */
     bartasks(mon);
     barclock(mon);
     XFlush(dpy);
@@ -678,10 +694,14 @@ barclick(Monitor *mon, int x)
         spawn(&arg_inst);
         return;
     }
+    if (x < START_W + INST_W + WIFI_W) {
+        spawn(&arg_wifi);
+        return;
+    }
     n = barcount(mon);
     if (!n)
         return;
-    x0 = START_W + INST_W;
+    x0 = START_W + INST_W + WIFI_W;
     x1 = mon->w - CLOCK_W;
     tw = (x1 - x0) / n;
     if (tw < 50)
