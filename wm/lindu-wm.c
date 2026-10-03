@@ -1077,17 +1077,33 @@ buttonpress(XEvent *e)
         return;
     focus(c);
 
-    if (be->button == Button1 && CLEANMASK(be->state) == MODKEY) {
-        c->isfloating = 1;
+    if (be->button == Button1 &&
+        (CLEANMASK(be->state) == 0 || CLEANMASK(be->state) == MODKEY)) {
+        /* перетаскивание мышью: окно отрывается от тайла и едет за курсором.
+         * Без Win порог 8 px — иначе обычный клик по кнопке окна ломал бы тайлинг. */
+        int grab_x = be->x_root, grab_y = be->y_root;
+        int dx0 = be->x_root - c->x;
+        int dy0 = be->y_root - c->y;
+        int moving = (CLEANMASK(be->state) == MODKEY);
+        if (moving)
+            c->isfloating = 1;
         while (1) {
             XEvent te;
             XMaskEvent(dpy, PointerMotionMask | ButtonReleaseMask, &te);
             if (te.type == ButtonRelease)
                 break;
-            c->x = te.xmotion.x_root - (c->w / 2);
-            c->y = te.xmotion.y_root - (c->h / 2);
-            c->ox = c->x; c->oy = c->y;
-            XMoveWindow(dpy, c->win, c->x, c->y);
+            if (!moving) {
+                int mdx = te.xmotion.x_root - grab_x;
+                int mdy = te.xmotion.y_root - grab_y;
+                if (mdx > 8 || mdy > 8 || mdx < -8 || mdy < -8)
+                    moving = (c->isfloating = 1);
+            }
+            if (moving) {
+                c->x = te.xmotion.x_root - dx0;
+                c->y = te.xmotion.y_root - dy0;
+                c->ox = c->x; c->oy = c->y;
+                XMoveWindow(dpy, c->win, c->x, c->y);
+            }
         }
         arrange();
     } else if (be->button == Button3 && CLEANMASK(be->state) == MODKEY) {
