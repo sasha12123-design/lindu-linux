@@ -665,6 +665,8 @@ barxftcolor(unsigned long pixel, XftColor *out)
     XColor xc;
     XRenderColor rc;
 
+    memset(&rc, 0, sizeof(rc));
+
     memset(&xc, 0, sizeof(xc));
     xc.pixel = pixel;
     xc.flags = DoRed | DoGreen | DoBlue;
@@ -674,7 +676,6 @@ barxftcolor(unsigned long pixel, XftColor *out)
     rc.green = xc.green;
     rc.blue = xc.blue;
     rc.alpha = 0xffff;
-    rc.pad = 0;
     XftColorAllocValue(dpy, DefaultVisual(dpy, screen),
                        DefaultColormap(dpy, screen), &rc, out);
 }
