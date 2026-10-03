@@ -1474,14 +1474,12 @@ setup(void)
         barxft = XftFontOpen(dpy, scrw, "DejaVu Sans:size=12");
     if (!barxft)
         die("не найден шрифт для панели (нужен ttf-dejavu)");
-    barfont = NULL;
     col_inact  = getcolor(INACTIVE);
     col_bar    = getcolor(ACTIVE);
     col_baract = getcolor(BARACT);
     col_barline= getcolor(BARLINE);
     col_bartxt = getcolor(ACCENT);
     bargc = XCreateGC(dpy, DefaultRootWindow(dpy), 0, NULL);
-    XSetFont(dpy, bargc, barfont->fid);
 
     /* обнаружение мониторов через Xinerama */
     {
