@@ -592,7 +592,8 @@ class InstallerWindow(Gtk.ApplicationWindow):
         if not has_ip:
             return False, ("Нет подключения к интернету. Установка невозможна: нужны "
                            "пакеты из репозитория Arch.\n\nПодключите сетевой кабель "
-                           "или Wi-Fi и нажмите «Установить» ещё раз.\n"
+                           "или Wi-Fi: в live-системе нажмите Win+W "
+                           "(или запустите lindu-wifi) и выберите сеть.\n"
                            "Диск не тронут: разметка не началась.")
         return False, ("Интернет не работает: сеть подключена, но зеркало Arch "
                        "недоступно.\n\nПроверьте интернет и повторите установку.\n"
@@ -758,6 +759,15 @@ grub-mkconfig -o /boot/grub/grub.cfg
         if os.path.exists("/usr/local/bin/lindu-wm"):
             self.run(["install", "-D", "-m755", "/usr/local/bin/lindu-wm",
                       MOUNT + "/usr/local/bin/lindu-wm"], "lindu-wm")
+        # Wi-Fi-помощник (кнопка на панели и Win+W есть и в установленной системе)
+        if os.path.exists("/usr/local/bin/lind" "u-wifi"):
+            self.run(["install", "-D", "-m755", "/usr/local/bin/lind" "u-wifi",
+                      MOUNT + "/usr/local/bin/lind" "u-wifi"], "lindu-wifi")
+        if os.path.exists("/usr/share/applications/lind" "u-wifi.desktop"):
+            self.run(["install", "-D", "-m644",
+                      "/usr/share/applications/lind" "u-wifi.desktop",
+                      MOUNT + "/usr/share/applications/lind" "u-wifi.desktop"],
+                     "ярлык Wi-Fi")
         self.run(["bash", "-c", "mkdir -p %s/usr/share/backgrounds && "
                   "[ -f /usr/share/backgrounds/lindu.png ] || exit 0; "
                   "install -Dm644 /usr/share/backgrounds/lindu.png "
