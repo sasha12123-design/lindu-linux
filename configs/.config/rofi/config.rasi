@@ -8,9 +8,10 @@ configuration {
 }
 
 window {
-  location: southwest;
-  width: 55%;
-  anchor: south;
+  /* привязка по центру: иначе окно уезжает за левый край экрана */
+  location: center;
+  anchor: center;
+  width: 60%;
   padding: 14px;
   border: 2px;
   border-radius: 8px;
