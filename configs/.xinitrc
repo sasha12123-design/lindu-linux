@@ -42,4 +42,5 @@ if [ ! -f "$HOME/.lindu-first-run" ]; then
 fi
 
 # собственный оконный менеджер lindu
-exec /usr/local/bin/lindu-wm
+# вывод идёт в файл: так можно понять, что происходит, если экран пуст
+exec /usr/local/bin/lindu-wm >> "$HOME/.lindu-wm.log" 2>&1
