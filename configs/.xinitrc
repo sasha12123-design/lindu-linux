@@ -1,6 +1,11 @@
 #!/bin/sh
 # lindu linux — .xinitrc (окружение desktop)
 
+# окружение рабочего стола (lindu, не XFCE)
+export XDG_CURRENT_DESKTOP=LINDU
+export XDG_SESSION_DESKTOP=lindudesktop
+export XDG_SESSION_TYPE=x11
+
 # ресурсы и тема (rofi, alacritty, ...)
 [ -f "$HOME/.Xresources" ] && xrdb -merge "$HOME/.Xresources"
 
