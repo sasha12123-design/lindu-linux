@@ -9,7 +9,7 @@ say() { printf '%s\n' "$*"; }
 
 msg() {
     # сообщение пользователю: окном rofi, а без rofi — просто текстом
-    if command -v rofi >/dev/null 2>&1; then
+    if have_gui; then
         printf '%s' "$1" | rofi -dmenu -p "lindu Wi-Fi" -i >/dev/null 2>&1 || true
     else
         say "$1"
@@ -17,6 +17,13 @@ msg() {
 }
 
 have_nm() { command -v nmcli >/dev/null 2>&1; }
+
+# есть ли графическая сессия (иначе rofi ругается на отсутствие дисплея)
+have_gui() {
+    [ -n "${DISPLAY:-}${WAYLAND_DISPLAY:-}" ] || return 1
+    command -v rofi >/dev/null 2>&1 || return 1
+    return 0
+}
 
 # nmcli от пользователя, а если не хватило прав — через polkit
 nm() {
@@ -63,8 +70,8 @@ main() {
         return 1
     fi
 
-    # без rofi — только подсказка в терминале
-    if ! command -v rofi >/dev/null 2>&1; then
+    # без графической сессии — только подсказка в терминале
+    if ! have_gui; then
         usage
         return 0
     fi
