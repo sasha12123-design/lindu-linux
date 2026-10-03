@@ -4,7 +4,7 @@ DESTDIR ?=
 CC ?= gcc
 CFLAGS ?= -O2 -std=c99 -Wall -Wextra
 LDFLAGS ?=
-LIBS = -lX11 -lXinerama
+LIBS = -lX11 -lXinerama -lXft
 
 SRC = lindu-wm.c
 OBJ = $(SRC:.c=.o)
