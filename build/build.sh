@@ -99,6 +99,9 @@ for f in lindu-install lindu-install-gtk lindu-install-report; do
 done
 
 echo "==> Сборка lindu-wm (C/Xlib)"
+echo "    СИГНАТУРЫ Xft (для компиляции менеджера):"
+grep -n -A4 "XftTextExtents8\\|XftColorAllocValue\\|XftDrawString8\\|XftFontOpen\\|XftDrawCreate" /usr/include/X11/Xft/Xft.h || true
+
 make -C "$WM_DIR" clean >/dev/null 2>&1 || true
 make -C "$WM_DIR" PREFIX=/usr/local DESTDIR="$STAGE_DIR/airootfs" install
 
