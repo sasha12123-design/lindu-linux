@@ -18,6 +18,7 @@
 
 #define START_W   46                 /* ширина кнопки «Пуск»        */
 #define INST_W    46                 /* ширина кнопки установщика   */
+#define WIFI_W    46                 /* ширина кнопки Wi-Fi         */
 #define CLOCK_W   170                /* запас под часы справа       */
 
 #define ACTIVE    "#1f387b"          /* фон панели (как таскбар Windows) */
@@ -51,6 +52,7 @@ static Key keys[] = {
     { MODKEY | ShiftMask, XK_b, spawn,          SHCMD("firefox") },
     { MODKEY, XK_e,             spawn,          SHCMD("thunar") },
     { MODKEY, XK_p,             spawn,          SHCMD("scrot ~/Pictures/%Y-%m-%d_%H-%M-%S.png") },
+    { MODKEY, XK_w,             spawn,          SHCMD("lindu-wifi") },
 
     /* выход и окна */
     { MODKEY, XK_q,             quit,           {0} },
