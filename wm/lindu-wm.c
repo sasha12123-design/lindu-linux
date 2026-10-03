@@ -21,6 +21,7 @@
 #include <X11/keysym.h>
 #include <X11/cursorfont.h>
 #include <X11/extensions/Xinerama.h>
+#include <X11/Xft/Xft.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -28,6 +29,7 @@
 #include <unistd.h>
 #include <signal.h>
 #include <limits.h>
+#include <sys/time.h>
 
 #define LENGTH(X)            (sizeof(X) / sizeof(X[0]))
 #define MAX(x, y)            (((x) > (y)) ? (x) : (y))
@@ -53,6 +55,7 @@ enum { LT_TILE, LT_MONOCLE, LT_FLOAT, LT_LAST };
 enum {
     NetSupported, NetWMName, NetActiveWindow,
     NetWMState, NetWMFullscreen,
+    NetWMStateMaxH, NetWMStateMaxV, NetWMStateHidden,
     NetWMWindowType, NetWMWindowTypeDialog,
     NetWMWindowTypeDock, NetWMWindowTypeDesktop, NetWMWindowTypeUtility,
     NetLast
@@ -65,13 +68,13 @@ static int scrw, scrh;
 static int barvisible = 1;
 static int barh;
 static int numlockmask = 0;
-static XFontStruct *barfont;
+XftFont *barxft;        /* шрифт панели (Xft, масштабируемый) */
 static GC bargc;
 static unsigned long col_inact;
 static unsigned long col_bar, col_baract, col_barline, col_bartxt;
 static int running = 1;
 static time_t laststatus = 0;
-static Atom wm_delete, wm_protocols;
+static Atom wm_delete, wm_protocols, wm_state, wm_change_state;
 static Cursor cursor;
 
 typedef struct Client Client;
@@ -84,6 +87,7 @@ struct Client {
     int ox, oy, ow, oh;
     int isfloating;
     int isfullscreen;
+    int ishidden;         /* окно свёрнуто, но живо */
     int isfixed;
     unsigned int tags;
 };
@@ -126,6 +130,7 @@ static void removeclient(Client *c);
 static void focus(Client *c);
 static void unfocus(Client *gone);
 static void drawbar(Monitor *mon);
+static void setstate(Client *c, int state);
 static void arrange(void);
 static void resize(Client *c, int x, int y, int w, int h);
 static void applysize(Client *c, XWindowChanges *wc, int n);
@@ -431,7 +436,7 @@ counttiled(Monitor *mon)
 
     for (c = clients; c; c = c->next)
         if (c->mon == mon && (c->tags & mon->curtag) &&
-            !c->isfloating && !c->isfullscreen)
+            !c->isfloating && !c->isfullscreen && !c->ishidden)
             n++;
     return n;
 }
@@ -464,6 +469,8 @@ tile(Monitor *mon)
             resize(c, c->ox, c->oy, c->ow, c->oh);
             continue;
         }
+        if (c->ishidden)
+            continue;
         if (i == 0)
             resize(c, x, y, w * MASTERFACTOR / 100, h);
         else
@@ -491,6 +498,8 @@ monocle(Monitor *mon)
             resize(c, c->ox, c->oy, c->ow, c->oh);
             continue;
         }
+        if (c->ishidden)
+            continue;
         resize(c, mon->x, y, mon->w, h);
     }
 }
@@ -501,7 +510,8 @@ floating(Monitor *mon)
     Client *c;
 
     for (c = clients; c; c = c->next)
-        if (c->mon == mon && (c->tags & mon->curtag) && !c->isfullscreen)
+        if (c->mon == mon && (c->tags & mon->curtag) && !c->isfullscreen &&
+            !c->ishidden)
             resize(c, c->ox, c->oy, c->ow, c->oh);
 }
 
@@ -561,41 +571,48 @@ bartitle(Client *c)
 static void
 baricon(Monitor *mon, int cx, int cy, int kind)
 {
-    int s = 6, g = 2;
+    int s = 7, g = 2, r;
+    XGCValues gcv;
+
+    /* толстые линии нужны значкам Wi-Fi, крестика и установщика */
+    gcv.line_width = 2;
+    gcv.cap_style = CapRound;
+    gcv.join_style = JoinRound;
 
     XSetForeground(dpy, bargc, col_bartxt);
     if (kind == 1) {
+        /* Пуск: логотип-сетка из четырёх плиток, одна выделена */
         int x0 = cx - (2 * s + g) / 2;
         int y0 = cy - (2 * s + g) / 2;
         XFillRectangle(dpy, mon->barwin, bargc, x0, y0, s, s);
         XFillRectangle(dpy, mon->barwin, bargc, x0 + s + g, y0, s, s);
         XFillRectangle(dpy, mon->barwin, bargc, x0, y0 + s + g, s, s);
+        XSetForeground(dpy, bargc, col_barline);
         XFillRectangle(dpy, mon->barwin, bargc, x0 + s + g, y0 + s + g, s, s);
+    } else if (kind == 2) {
+        /* установщик: стрелка вниз в подставку */
+        XChangeGC(dpy, bargc, GCLineWidth | GCCapStyle | GCJoinStyle, &gcv);
+        XDrawLine(dpy, mon->barwin, bargc, cx, cy - 9, cx, cy + 1);
+        XDrawLine(dpy, mon->barwin, bargc, cx - 4, cy - 3, cx, cy + 2);
+        XDrawLine(dpy, mon->barwin, bargc, cx + 4, cy - 3, cx, cy + 2);
+        XSetLineAttributes(dpy, bargc, 0, LineSolid, CapButt, JoinMiter);
+        XFillRectangle(dpy, mon->barwin, bargc, cx - 9, cy + 5, 18, 3);
     } else if (kind == 3) {
-        /* Wi-Fi: три дуги антенны и точка */
-        int r;
-        XSetForeground(dpy, bargc, col_bartxt);
-        for (r = 5; r <= 13; r += 4) {
-            XDrawArc(dpy, mon->barwin, bargc, cx - r, cy - r + 6, 2 * r, 2 * r,
-                     60 * 64, 60 * 64);
-            XDrawArc(dpy, mon->barwin, bargc, cx - r, cy - r + 6, 2 * r, 2 * r,
-                     120 * 64, 60 * 64);
-            XDrawArc(dpy, mon->barwin, bargc, cx - r, cy - r + 6, 2 * r, 2 * r,
-                     180 * 64, 60 * 64);
-        }
-        XFillRectangle(dpy, mon->barwin, bargc, cx - 2, cy + 6, 4, 4);
+        /* Wi-Fi: три дуги антенны и точка основания */
+        XChangeGC(dpy, bargc, GCLineWidth | GCCapStyle | GCJoinStyle, &gcv);
+        for (r = 6; r <= 14; r += 4)
+            XDrawArc(dpy, mon->barwin, bargc, cx - r, cy + 9 - r, 2 * r, 2 * r,
+                     40 * 64, 100 * 64);
+        XSetLineAttributes(dpy, bargc, 0, LineSolid, CapButt, JoinMiter);
+        XFillRectangle(dpy, mon->barwin, bargc, cx - 2, cy + 8, 4, 4);
     } else if (kind == 4) {
         /* крестик: закрыть активное окно */
-        XSetForeground(dpy, bargc, col_bartxt);
-        XFillRectangle(dpy, mon->barwin, bargc, cx - 6, cy - 3, 3, 3);
-        XFillRectangle(dpy, mon->barwin, bargc, cx - 4, cy - 1, 3, 3);
-        XFillRectangle(dpy, mon->barwin, bargc, cx - 2, cy + 1, 3, 3);
-        XFillRectangle(dpy, mon->barwin, bargc, cx - 5, cy + 2, 3, 3);
-        XFillRectangle(dpy, mon->barwin, bargc, cx - 3, cy + 4, 3, 3);
-        XFillRectangle(dpy, mon->barwin, bargc, cx - 1, cy + 2, 3, 3);
-        XFillRectangle(dpy, mon->barwin, bargc, cx + 1, cy + 0, 3, 3);
-        XFillRectangle(dpy, mon->barwin, bargc, cx + 3, cy - 2, 3, 3);
+        XChangeGC(dpy, bargc, GCLineWidth | GCCapStyle | GCJoinStyle, &gcv);
+        XDrawLine(dpy, mon->barwin, bargc, cx - 6, cy - 6, cx + 6, cy + 6);
+        XDrawLine(dpy, mon->barwin, bargc, cx + 6, cy - 6, cx - 6, cy + 6);
+        XSetLineAttributes(dpy, bargc, 0, LineSolid, CapButt, JoinMiter);
     } else {
+        /* запасной значок: стрелка вниз */
         XFillRectangle(dpy, mon->barwin, bargc, cx - 2, cy - 9, 4, 11);
         XFillRectangle(dpy, mon->barwin, bargc, cx - 7, cy + 2, 14, 4);
     }
@@ -645,12 +662,11 @@ bartasks(Monitor *mon)
         }
         tt = bartitle(c);
         tl = (int)strlen(tt);
-        maxw = tw - 10;
-        while (tl > 0 && XTextWidth(barfont, tt, tl) > maxw)
+        maxw = tw - 14;
+        while (tl > 1 && XftTextWidth8(dpy, barxft, (FcChar8 *)tt, tl) > maxw)
             tl--;
-        XSetForeground(dpy, bargc, col_bartxt);
-        XDrawString(dpy, mon->barwin, bargc, x0 + i * tw + 5, barh - PADDING_Y,
-                    tt, tl);
+        XftDrawString8(dpy, mon->barwin, col_bartxt, barxft, x0 + i * tw + 7,
+                       barh - PADDING_Y, (FcChar8 *)tt, tl);
         i++;
     }
 }
@@ -668,16 +684,15 @@ barclock(Monitor *mon)
     tm = localtime(&tmnow);
     snprintf(buf, sizeof(buf), "%02d:%02d %02d.%02d",
              tm->tm_hour, tm->tm_min, tm->tm_mday, tm->tm_mon + 1);
-    w = XTextWidth(barfont, buf, (int)strlen(buf));
-    XSetForeground(dpy, bargc, col_bartxt);
-    XDrawString(dpy, mon->barwin, bargc, mon->w - w - PADDING_X, barh - PADDING_Y,
-                buf, (int)strlen(buf));
+    w = XftTextWidth8(dpy, barxft, (FcChar8 *)buf, (int)strlen(buf));
+    XftDrawString8(dpy, mon->barwin, col_bartxt, barxft, mon->w - w - PADDING_X,
+                   barh - PADDING_Y, (FcChar8 *)buf, (int)strlen(buf));
 }
 
 static void
 drawbar(Monitor *mon)
 {
-    if (!barvisible)
+    if (!mon || !barvisible)
         return;
 
     XSetForeground(dpy, bargc, col_bar);
@@ -688,12 +703,24 @@ drawbar(Monitor *mon)
     /* закрыть активное окно */
     barbutton(mon, START_W + INST_W + WIFI_W,
               START_W + INST_W + WIFI_W + CLOSE_W, 0, 4);
+    /* тонкая вертикальная черта: отделяет кнопки от списка задач */
+    XSetForeground(dpy, bargc, col_barline);
+    XFillRectangle(dpy, mon->barwin, bargc,
+                   START_W + INST_W + WIFI_W + CLOSE_W - 12, 6, 1, barh - 12);
     bartasks(mon);
     barclock(mon);
     XFlush(dpy);
 }
 
 /* клик по панели: Пуск / установщик / переключение задач */
+/* двойной щелчок по кнопке задачи */
+static Window lastbarwin = None;
+static long lastbarms = 0;
+
+/* двойной щелчок по кнопке задачи */
+static Window lastbarwin = None;
+static long lastbarms = 0;
+
 static void
 barclick(Monitor *mon, int x)
 {
@@ -728,7 +755,25 @@ barclick(Monitor *mon, int x)
         if (c->mon != mon || !(c->tags & mon->curtag) || c->isfullscreen)
             continue;
         if (x >= x0 + i * tw && x < x0 + (i + 1) * tw) {
+            /* свёрнутое окно — разворачиваем, затем поднимаем;
+             * повторный щелчок в течение 0.4 с — во весь экран */
+            if (c->ishidden)
+                setstate(c, NormalState);
             focus(c);
+            {
+                struct timeval tv;
+                long now;
+                gettimeofday(&tv, NULL);
+                now = (long)tv.tv_sec * 1000 + tv.tv_usec / 1000;
+                if (c->win == lastbarwin && now - lastbarms < 400) {
+                    c->isfullscreen = !c->isfullscreen;
+                    arrange();
+                    lastbarwin = None;
+                } else {
+                    lastbarwin = c->win;
+                    lastbarms = now;
+                }
+            }
             return;
         }
         i++;
@@ -1021,7 +1066,24 @@ togglebar(const Arg *arg)
 static void
 grabbuttons(Client *c)
 {
+    unsigned int b;
+
+    /* Наша подписка на события окна. Без неё приложение, выбравшее на своём
+     * окне только свои события, не даст менеджеру увидеть нажатие — и именно
+     * такие окна нельзя было перетащить мышью. */
+    XSelectInput(dpy, c->win,
+                 ButtonPressMask | ButtonReleaseMask | PointerMotionMask);
+
+    /* Пассивные захваты всех кнопок с owner_events: приложение продолжает
+     * получать свои события как обычно, но теперь нажатие и движение мыши
+     * видит и менеджер (иначе приложение перехватывает их первым). */
     XUngrabButton(dpy, AnyButton, AnyModifier, c->win);
+    for (b = Button1; b <= Button5; b += 2)
+        XGrabButton(dpy, b, AnyModifier, c->win, True,
+                    ButtonPressMask | ButtonReleaseMask | PointerMotionMask,
+                    GrabModeAsync, GrabModeAsync, None, None);
+
+    /* с Win окно отрывается от плитки сразу; Win + правая кнопка — размер */
     XGrabButton(dpy, Button1, MODKEY, c->win, False,
                 ButtonPressMask | ButtonReleaseMask | PointerMotionMask,
                 GrabModeAsync, GrabModeAsync, None, None);
@@ -1050,6 +1112,83 @@ grabkeys(void)
 }
 
 static void
+/* сворачивание и разворачивание окна средствами менеджера */
+static void
+setstate(Client *c, int state)
+{
+    XChangeProperty(dpy, c->win, wm_state, XA_WM_STATE, 32, PropModeReplace,
+                    (unsigned char *)&state, 1);
+    if (state == IconicState) {
+        c->ishidden = 1;
+        XUnmapWindow(dpy, c->win);
+    } else {
+        c->ishidden = 0;
+        XMapWindow(dpy, c->win);
+    }
+}
+
+
+/* Кнопки «свернуть» и «развернуть» в самих приложениях: приложение шлёт
+ * WM_CHANGE_STATE или _NET_WM_STATE — раньше мы это игнорировали, и нажатия
+ * ничего не делали. */
+static void
+clientmessage(XEvent *e)
+{
+    XClientMessageEvent *ev = &e->xclient;
+    Client *c;
+    Atom a1, a2;
+    int action;
+
+    for (c = clients; c; c = c->next)
+        if (c->win == ev->window)
+            break;
+    if (!c || ev->format != 32)
+        return;
+
+    /* свернуть */
+    if (ev->message_type == wm_change_state && ev->data.l[0] == IconicState) {
+        if (!c->ishidden) {
+            setstate(c, IconicState);
+            arrange();
+            drawbar(m);
+        }
+        return;
+    }
+
+    if (ev->message_type != atoms[NetWMState])
+        return;
+
+    /* 0 = убрать состояние, 1 = добавить, 2 = переключить */
+    action = (int)ev->data.l[1];
+    a1 = (Atom)ev->data.l[0];
+    a2 = (Atom)ev->data.l[2];
+
+    /* во весь экран: приложение просит максимизацию или полноэкранный режим */
+    if (a1 == atoms[NetWMFullscreen] || a2 == atoms[NetWMFullscreen] ||
+        a1 == atoms[NetWMStateMaxH] || a2 == atoms[NetWMStateMaxH] ||
+        a1 == atoms[NetWMStateMaxV] || a2 == atoms[NetWMStateMaxV]) {
+        int want = (action == 0) ? 0 : (action == 1) ? 1 : !c->isfullscreen;
+        if (want != c->isfullscreen) {
+            c->isfullscreen = want;
+            focus(c);
+            arrange();
+        }
+        return;
+    }
+
+    if (a1 == atoms[NetWMStateHidden] || a2 == atoms[NetWMStateHidden]) {
+        if (action != 0)
+            setstate(c, IconicState);
+        else {
+            setstate(c, NormalState);
+            focus(c);
+        }
+        arrange();
+        drawbar(m);
+    }
+}
+
+
 maprequest(XEvent *e)
 {
     XMapRequestEvent *ev = &e->xmaprequest;
@@ -1067,6 +1206,7 @@ maprequest(XEvent *e)
             break;
     if (!c)
         c = addtoclient(ev->window);
+    c->ishidden = 0;
     grabbuttons(c);
     XMoveResizeWindow(dpy, c->win, c->x, c->y, c->w, c->h);
     XMapWindow(dpy, c->win);
@@ -1146,20 +1286,21 @@ static void
 unmapnotify(XEvent *e)
 {
     XUnmapEvent *ev = &e->xunmap;
-    Client **cp, *c;
+    Client *c;
 
-    /* Окно закрыто или просто скрыто — в любом случае убираем клиента.
-     * Раньше это делалось только для синтетических событий, из-за чего закрытые
-     * окна навсегда оставались в списке, а обращения к ним роняли менеджер. */
-    for (cp = &clients; *cp; cp = &(*cp)->next)
-        if ((*cp)->win == ev->window)
+    /* Окно убрано с экрана. Так бывает и при сворачивании, поэтому клиента
+     * из списка НЕ удаляем — просто помечаем скрытым: окно живо, его можно
+     * вернуть (например, из панели). Настоящее удаление делает destroynotify,
+     * когда окно уничтожено по-настоящему. */
+    for (c = clients; c; c = c->next)
+        if (c->win == ev->window)
             break;
-    if (*cp) {
-        c = *cp;
-        removeclient(c);
-        unfocus(c);
-        arrange();
-    }
+    if (!c)
+        return;
+    c->ishidden = 1;
+    unfocus(c);
+    arrange();
+    drawbar(m);
 }
 
 static void
@@ -1233,6 +1374,8 @@ enternotify(XEvent *e)
             break;
     if (!c)
         return;
+    if (c->ishidden)
+        return;               /* свёрнуто: фокус не возвращаем */
     XGetInputFocus(dpy, &focuswin, &revert);
     if (ce->window != focuswin)
         focus(c);
@@ -1260,6 +1403,7 @@ run(void)
             XNextEvent(dpy, &ev);
             switch (ev.type) {
             case ConfigureRequest: configurerequest(&ev); break;
+            case ClientMessage:    clientmessage(&ev);    break;
             case MapRequest:        maprequest(&ev);       break;
             case ButtonPress:       buttonpress(&ev);      break;
             case UnmapNotify:       unmapnotify(&ev);      break;
@@ -1305,6 +1449,9 @@ setup(void)
     atoms[NetActiveWindow]       = XInternAtom(dpy, "_NET_ACTIVE_WINDOW", False);
     atoms[NetWMState]            = XInternAtom(dpy, "_NET_WM_STATE", False);
     atoms[NetWMFullscreen]       = XInternAtom(dpy, "_NET_WM_STATE_FULLSCREEN", False);
+    atoms[NetWMStateMaxH]   = XInternAtom(dpy, "_NET_WM_STATE_MAXIMIZED_HORZ", False);
+    atoms[NetWMStateMaxV]   = XInternAtom(dpy, "_NET_WM_STATE_MAXIMIZED_VERT", False);
+    atoms[NetWMStateHidden] = XInternAtom(dpy, "_NET_WM_STATE_HIDDEN", False);
     atoms[NetWMWindowType]       = XInternAtom(dpy, "_NET_WM_WINDOW_TYPE", False);
     atoms[NetWMWindowTypeDialog] = XInternAtom(dpy, "_NET_WM_WINDOW_TYPE_DIALOG", False);
     atoms[NetWMWindowTypeDock]   = XInternAtom(dpy, "_NET_WM_WINDOW_TYPE_DOCK", False);
@@ -1312,6 +1459,8 @@ setup(void)
     atoms[NetWMWindowTypeUtility]= XInternAtom(dpy, "_NET_WM_WINDOW_TYPE_UTILITY", False);
     wm_protocols  = XInternAtom(dpy, "WM_PROTOCOLS", False);
     wm_delete     = XInternAtom(dpy, "WM_DELETE_WINDOW", False);
+    wm_state      = XInternAtom(dpy, "WM_STATE", False);
+    wm_change_state = XInternAtom(dpy, "WM_CHANGE_STATE", False);
 
     for (i = 0; i < NetLast; i++)
         supported[i] = atoms[i];
@@ -1320,10 +1469,12 @@ setup(void)
                     (unsigned char *)supported, NetLast);
 
     barh = BARH;
-    if ((barfont = XLoadQueryFont(dpy, FONT)) == NULL)
-        barfont = XLoadQueryFont(dpy, "fixed");
-    if (!barfont)
-        die("не найден шрифт для панели (установите terminus-font)");
+    barxft = XftFontOpen(dpy, scrw, FONT_XFT);
+    if (!barxft)
+        barxft = XftFontOpen(dpy, scrw, "DejaVu Sans:size=12");
+    if (!barxft)
+        die("не найден шрифт для панели (нужен ttf-dejavu)");
+    barfont = NULL;
     col_inact  = getcolor(INACTIVE);
     col_bar    = getcolor(ACTIVE);
     col_baract = getcolor(BARACT);
