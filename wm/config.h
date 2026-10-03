@@ -19,6 +19,7 @@
 #define START_W   46                 /* ширина кнопки «Пуск»        */
 #define INST_W    46                 /* ширина кнопки установщика   */
 #define WIFI_W    46                 /* ширина кнопки Wi-Fi         */
+#define CLOSE_W   34                 /* ширина кнопки закрытия окна  */
 #define CLOCK_W   170                /* запас под часы справа       */
 
 #define ACTIVE    "#1f387b"          /* фон панели (как таскбар Windows) */
@@ -58,6 +59,8 @@ static Key keys[] = {
     { MODKEY, XK_q,             quit,           {0} },
     { MODKEY | ShiftMask, XK_q, quit,           {0} },
     { MODKEY | ShiftMask, XK_c, killclient,      {0} },
+    /* закрыть активное окно */
+    { Mod1Mask, XK_F4,      killclient,      {0} },
     { MODKEY, XK_space,         togglefloat,     {0} },
     { MODKEY, XK_f,             togglefullscreen,{0} },
 
