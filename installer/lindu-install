@@ -141,7 +141,7 @@ check_network() {
         return 0
     fi
     if [ "$has_ip" -eq 0 ]; then
-        fail "Нет подключения к интернету. Подключите кабель или Wi-Fi и повторите. Диск не тронут."
+        fail "Нет подключения к интернету. Подключите кабель или Wi-Fi (в live-системе Win+W или lindu-wifi) и повторите. Диск не тронут."
     fi
     fail "Интернет не работает: зеркало Arch недоступно. Проверьте сеть и повторите. Диск не тронут."
 }
@@ -281,6 +281,12 @@ EOF
 }
 
 install_lindu() {
+    # Wi-Fi-помощник (кнопка на панели и Win+W работают и в установленной системе)
+    [ -f /usr/local/bin/lind""u-wifi ] && \
+        install -D -m755 /usr/local/bin/lind""u-wifi "$MOUNT/usr/local/bin/lind""u-wifi" || true
+    [ -f /usr/share/applications/lind""u-wifi.desktop ] && \
+        install -D -m644 /usr/share/applications/lind""u-wifi.desktop \
+            "$MOUNT/usr/share/applications/lind""u-wifi.desktop" || true
     step "Установка среды lindu (WM + конфиги)"
     install -d "$MOUNT/usr/local/bin"
     if [ -f /usr/local/bin/lindu-wm ]; then
