@@ -33,9 +33,9 @@ if ! command -v mkarchiso >/dev/null 2>&1; then
 fi
 
 # компилятор и заголовки для сборки менеджера
-if ! command -v gcc >/dev/null 2>&1 || [ ! -f /usr/include/X11/Xlib.h ] || [ ! -f /usr/include/X11/extensions/Xinerama.h ] || [ ! -f /usr/include/X11/Xft/Xft.h ]; then
+if ! command -v gcc >/dev/null 2>&1 || [ ! -f /usr/include/X11/Xlib.h ] || [ ! -f /usr/include/X11/extensions/Xinerama.h ] || [ ! -f /usr/include/X11/Xft/Xft.h ] || [ ! -f /usr/include/freetype2/ft2build.h ]; then
     echo "    [gcc/libX11/libXft отсутствуют] устанавливаю..."
-    pacman -S --noconfirm --needed base-devel libx11 libxinerama libxft fontconfig
+    pacman -S --noconfirm --needed base-devel libx11 libxinerama libxft fontconfig freetype2
 fi
 
 RELENG_PROFILE="/usr/share/archiso/configs/releng"
