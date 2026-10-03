@@ -21,6 +21,7 @@
 #include <X11/keysym.h>
 #include <X11/cursorfont.h>
 #include <X11/extensions/Xinerama.h>
+#include <X11/extensions/Xrender.h>
 #include <X11/Xft/Xft.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -635,17 +636,47 @@ barbutton(Monitor *mon, int x0, int x1, int active, int kind)
 }
 
 /* список открытых окон (задачи) */
-/* Ширина текста панели в пикселях. */
+/* Буфер глифов для измерения ширины текста. */
+#define BARGLYPHS 512
+static XGlyphInfo barglyphs[BARGLYPHS];
+
+/* Ширина текста панели в пикселях: Xft отдаёт по одному глифу на символ,
+ * ширина строки — сумма смещений xOff. */
 static int
 bartextwidth(const char *s, int len)
 {
-    XftTextExtents ext;
+    int i, total = 0;
 
-    if (len <= 0 || !barxft)
+    if (!barxft || len <= 0)
         return 0;
-    if (XftTextExtents8(dpy, barxft, (const FcChar8 *)s, len, &ext))
-        return 0;
-    return (int)ext.xAdvance;
+    if (len > BARGLYPHS)
+        len = BARGLYPHS;
+    XftTextExtents8(dpy, barxft, (const FcChar8 *)s, len, barglyphs);
+    for (i = 0; i < len; i++)
+        total += barglyphs[i].xOff;
+    return total;
+}
+
+/* Цвет панели для Xft: XftColorAllocValue ждёт XRenderColor, поэтому нужный
+ * оттенок сначала читаем из колоровой карты. */
+static void
+barxftcolor(unsigned long pixel, XftColor *out)
+{
+    XColor xc;
+    XRenderColor rc;
+
+    memset(&xc, 0, sizeof(xc));
+    xc.pixel = pixel;
+    xc.flags = DoRed | DoGreen | DoBlue;
+    if (!XQueryColors(dpy, DefaultColormap(dpy, screen), &xc, 1))
+        return;
+    rc.red = xc.red;
+    rc.green = xc.green;
+    rc.blue = xc.blue;
+    rc.alpha = 0xffff;
+    rc.pad = 0;
+    XftColorAllocValue(dpy, DefaultVisual(dpy, screen),
+                       DefaultColormap(dpy, screen), &rc, out);
 }
 
 /* Текст панели: Xft рисует через XftDraw, а не напрямую через окно. */
@@ -661,8 +692,7 @@ bardrawtext(Monitor *mon, int x, int y, const char *s, int len)
                        DefaultColormap(dpy, screen));
     if (!dr)
         return;
-    XftColorAllocValue(dpy, DefaultVisual(dpy, screen),
-                       DefaultColormap(dpy, screen), col_bartxt, &color);
+    barxftcolor(col_bartxt, &color);
     XftDrawString8(dr, &color, barxft, x, y, (const FcChar8 *)s, len);
     XftDrawDestroy(dr);
 }
@@ -1495,9 +1525,9 @@ setup(void)
                     (unsigned char *)supported, NetLast);
 
     barh = BARH;
-    barxft = XftFontOpen(dpy, scrw, FONT_XFT);
+    barxft = XftFontOpen(dpy, scrw, FONT_XFT, (char *)NULL);
     if (!barxft)
-        barxft = XftFontOpen(dpy, scrw, "DejaVu Sans:size=12");
+        barxft = XftFontOpen(dpy, scrw, "DejaVu Sans:size=12", (char *)NULL);
     if (!barxft)
         die("не найден шрифт для панели (нужен ttf-dejavu)");
     col_inact  = getcolor(INACTIVE);
