@@ -10,7 +10,7 @@ say() { printf '%s\n' "$*"; }
 msg() {
     # сообщение пользователю: окном rofi, а без rofi — просто текстом
     if have_gui; then
-        printf '%s' "$1" | rofi -dmenu -p "lindu Wi-Fi" -i >/dev/null 2>&1 || true
+        printf '%s' "$1" | rofi -dmenu -p "lindu Wi-Fi" -i -width 60% -lines 6 >/dev/null 2>&1 || true
     else
         say "$1"
     fi
@@ -95,7 +95,7 @@ main() {
     )"
 
     local choice ssid pass sec
-    choice="$(printf '%s\n' "$list" | rofi -dmenu -p "lindu Wi-Fi — выберите сеть" -i)"
+    choice="$(printf '%s\n' "$list" | rofi -dmenu -p "lindu Wi-Fi — выберите сеть" -i -width 60% -lines 14)"
     [ -n "$choice" ] || return 0
 
     case "$choice" in
@@ -131,7 +131,7 @@ main() {
         return 1
     fi
 
-    pass="$(printf '' | rofi -dmenu -p "Пароль для $ssid" -password -i)"
+    pass="$(printf '' | rofi -dmenu -p "Пароль для $ssid" -password -i -width 420)"
     [ -n "$pass" ] || { msg "Пароль не введён — отменено"; return 1; }
 
     if nm device wifi connect "$ssid" password "$pass" >/dev/null 2>&1; then
