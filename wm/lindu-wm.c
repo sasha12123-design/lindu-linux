@@ -1526,14 +1526,19 @@ setup(void)
                     (unsigned char *)supported, NetLast);
 
     barh = BARH;
-    /* Второй аргумент XftFontOpen — НОМЕР экрана, а не его ширина:
-     * с шириной шрифт не открывался и менеджер сразу завершался. */
-    barxft = XftFontOpen(dpy, screen, FONT_XFT, (char *)NULL);
+    /* Второй аргумент — НОМЕР экрана, а не его ширина.
+     * И важно: XftFontOpen в современной Xft ждёт пары «ключ, значение»
+     * (XFT_FAMILY, XFT_SIZE, …), а строку с шаблоном принимает XftFontOpenName.
+     * С неверной функцией шрифт не открывался, и текст панели не рисовался. */
+    barxft = XftFontOpenName(dpy, screen, FONT_XFT);
     if (!barxft)
-        barxft = XftFontOpen(dpy, screen, "DejaVu Sans:size=12", (char *)NULL);
+        barxft = XftFontOpenName(dpy, screen, "DejaVu Sans:size=12");
     if (!barxft)
-        fprintf(stderr, "lindu-wm: не найден шрифт для панели, подписи "
-                        "выводиться не будут (нужен ttf-dejavu)\n");
+        fprintf(stderr, "lindu-wm: ВНИМАНИЕ: не найден шрифт для панели, "
+                        "подписи выводиться не будут (нужен ttf-dejavu)\n");
+    else
+        fprintf(stderr, "lindu-wm: шрифт панели открыт (%s), высота %d\n",
+                FONT_XFT, barxft->height);
     col_inact  = getcolor(INACTIVE);
     col_bar    = getcolor(ACTIVE);
     col_baract = getcolor(BARACT);
