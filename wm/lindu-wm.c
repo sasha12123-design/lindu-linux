@@ -1356,6 +1356,14 @@ main(int argc, char *argv[])
     if (!(dpy = XOpenDisplay(NULL)))
         die("не удалось открыть дисплей X");
 
+    /* окружение рабочего стола объявляем сами: приложения, запущенные из
+     * оконного менеджера, получают эти переменные независимо от того,
+     * как стартовала сессия (важно для уже установленной системы). */
+    setenv("XDG_CURRENT_DESKTOP", "LINDU", 1);
+    setenv("XDG_SESSION_DESKTOP", "lindudesktop", 1);
+    setenv("XDG_SESSION_TYPE", "x11", 1);
+    setenv("DESKTOP_SESSION", "lindu", 1);
+
     setup();
     run();
 
