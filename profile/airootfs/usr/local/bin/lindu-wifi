@@ -1,0 +1,139 @@
+#!/usr/bin/env bash
+# lindu-wifi — подключение к Wi-Fi без терминала.
+# Показывает список доступных сетей (rofi), спрашивает пароль и подключает.
+# Работает и без графики: если запустить в терминале — печатает подсказку.
+
+set -uo pipefail
+
+say() { printf '%s\n' "$*"; }
+
+msg() {
+    # сообщение пользователю: окном rofi, а без rofi — просто текстом
+    if command -v rofi >/dev/null 2>&1; then
+        printf '%s' "$1" | rofi -dmenu -p "lindu Wi-Fi" -i >/dev/null 2>&1 || true
+    else
+        say "$1"
+    fi
+}
+
+have_nm() { command -v nmcli >/dev/null 2>&1; }
+
+# nmcli от пользователя, а если не хватило прав — через polkit
+nm() {
+    if nmcli "$@"; then
+        return 0
+    fi
+    if command -v pkexec >/dev/null 2>&1; then
+        pkexec nmcli "$@"
+        return $?
+    fi
+    return 1
+}
+
+radio() { nmcli radio wifi 2>/dev/null | awk '/enabled/{print $2; exit}'; }
+
+current_ssid() {
+    nmcli -t -f NAME,TYPE,STATE device 2>/dev/null |
+        awk -F: '$2=="wifi" && $3=="connected"{print $1; exit}'
+}
+
+# список сетей: SSID<TAB>уровень<TAB>защита
+networks() {
+    nmcli -t -f SSID,SIGNAL,SECURITY device wifi list --rescan yes 2>/dev/null |
+        sed 's/\\:/:/g' |
+        awk -F: '$1 != "" && $1 != "--" {
+                 sec = ($3 == "" ? "open" : $3);
+                 printf "%s\t%s\t%s\n", $1, $2, sec;
+               }' |
+        sort -t"$(printf "\t")" -k2,2nr | awk '!seen[$0]++'
+}
+
+usage() {
+    cat <<'EOF'
+Подключение к Wi-Fi: lindu-wifi            (список сетей в окне, пароль там же)
+Проверить подключение:  nmcli networking connectivity check
+Подключиться вручную:   nmcli device wifi connect "Имя_сети" password "пароль"
+Включить/выключить Wi-Fi: nmcli radio wifi on | nmcli radio wifi off
+EOF
+}
+
+main() {
+    if ! have_nm; then
+        msg "nmcli не найден: в системе нет NetworkManager"
+        return 1
+    fi
+
+    # без rofi — только подсказка в терминале
+    if ! command -v rofi >/dev/null 2>&1; then
+        usage
+        return 0
+    fi
+
+    local st
+    st="$(radio)"
+    if [ "$st" != "enabled" ]; then
+        nm radio wifi on >/dev/null 2>&1 || true
+        sleep 1
+    fi
+
+    local list cur
+    cur="$(current_ssid)"
+    list="$(
+        printf '%s\n' "-- обновить список --"
+        if [ -n "$cur" ]; then
+            printf 'подключено: %s  (отключить)\n' "$cur"
+        fi
+        printf '%s\n' "-- подсказка (команды nmcli) --"
+        networks | awk -F"\t" '{printf "  %s  [%s%%]\n", $1, $2}'
+    )"
+
+    local choice ssid pass sec
+    choice="$(printf '%s\n' "$list" | rofi -dmenu -p "lindu Wi-Fi — выберите сеть" -i)"
+    [ -n "$choice" ] || return 0
+
+    case "$choice" in
+        "-- обновить список --")
+            main
+            return $?
+            ;;
+        "-- подсказка (команды nmcli) --")
+            msg "$(usage)"
+            return 0
+            ;;
+        *"(отключить)"*)
+            local old="${choice%%  (отключить)*}"
+            nm device disconnect "$old" >/dev/null 2>&1 &&
+                msg "Отключено: $old" || msg "Не удалось отключиться"
+            return 0
+            ;;
+    esac
+
+    ssid="${choice# }"
+    ssid="${ssid%%  [*}"
+    ssid="${ssid## }"
+
+    # защита сети: пустая строка = открытая сеть
+    sec="$(networks | awk -F"\t" -v s="$ssid" '$1==s{print $3; exit}')"
+
+    if [ "$sec" = "open" ] || [ -z "$sec" ]; then
+        if nm device wifi connect "$ssid" >/dev/null 2>&1; then
+            msg "Подключено: $ssid"
+            return 0
+        fi
+        msg "Не удалось подключиться к $ssid"
+        return 1
+    fi
+
+    pass="$(printf '' | rofi -dmenu -p "Пароль для $ssid" -password -i)"
+    [ -n "$pass" ] || { msg "Пароль не введён — отменено"; return 1; }
+
+    if nm device wifi connect "$ssid" password "$pass" >/dev/null 2>&1; then
+        sleep 1
+        msg "Подключено: $ssid"
+        return 0
+    fi
+    msg "Не удалось подключиться к $ssid: неверный пароль или сеть вне зоны"
+    return 1
+}
+
+main "$@"
