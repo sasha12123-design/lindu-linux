@@ -1123,22 +1123,18 @@ togglebar(const Arg *arg)
 static void
 grabbuttons(Client *c)
 {
-    unsigned int b;
-
-    /* Наша подписка на события окна. Без неё приложение, выбравшее на своём
-     * окне только свои события, не даст менеджеру увидеть нажатие — и именно
-     * такие окна нельзя было перетащить мышью. */
+    /* Наша подписка на события окна. Подписка у каждого клиента своя, поэтому
+     * приложение от неё ничего не теряет — зато менеджер видит нажатие даже
+     * там, где приложение выбрало только свои события (такие окна раньше
+     * нельзя было перетащить мышью). */
     XSelectInput(dpy, c->win,
                  ButtonPressMask | ButtonReleaseMask | PointerMotionMask);
 
-    /* Пассивные захваты всех кнопок с owner_events: приложение продолжает
-     * получать свои события как обычно, но теперь нажатие и движение мыши
-     * видит и менеджер (иначе приложение перехватывает их первым). */
+    /* Своих захватов на чужих окнах больше не делаем: они перехватывали
+     * события у приложений (кнопки в приложениях переставали нажиматься).
+     * Курсор мыши при необходимости захватывается в момент начала
+     * перетаскивания, а не заранее. */
     XUngrabButton(dpy, AnyButton, AnyModifier, c->win);
-    for (b = Button1; b <= Button5; b += 2)
-        XGrabButton(dpy, b, AnyModifier, c->win, True,
-                    ButtonPressMask | ButtonReleaseMask | PointerMotionMask,
-                    GrabModeAsync, GrabModeAsync, None, None);
 
     /* с Win окно отрывается от плитки сразу; Win + правая кнопка — размер */
     XGrabButton(dpy, Button1, MODKEY, c->win, False,
@@ -1294,33 +1290,64 @@ buttonpress(XEvent *e)
 
     if (be->button == Button1 &&
         (CLEANMASK(be->state) == 0 || CLEANMASK(be->state) == MODKEY)) {
-        /* перетаскивание мышью: окно отрывается от тайла и едет за курсором.
-         * Без Win порог 8 px — иначе обычный клик по кнопке окна ломал бы тайлинг. */
+        /* Перетаскивание мышью: окно отрывается от тайла и едет за курсором.
+         * Без Win порог 8 px — иначе обычный клик по кнопке окна ломал бы
+         * тайлинг.
+         *
+         * Курсор у приложения НЕ отбираем: пока порог не пройден, события
+         * идут приложению как обычно, поэтому клики работают. Позиция
+         * указателя берётся опросом, а не событиями, — порог срабатывает
+         * даже если приложение перехватило события мыши. Захват курсора
+         * включаем только когда перетаскивание действительно началось. */
         int grab_x = be->x_root, grab_y = be->y_root;
         int dx0 = be->x_root - c->x;
         int dy0 = be->y_root - c->y;
         int moving = (CLEANMASK(be->state) == MODKEY);
+        int dragging = 0;
+        Window root = DefaultRootWindow(dpy), rr, ch;
+        int rx, ry, wx, wy;
+        XEvent te;
+        time_t started = time(NULL);
+
         if (moving)
             c->isfloating = 1;
+
         while (1) {
-            XEvent te;
-            XMaskEvent(dpy, PointerMotionMask | ButtonReleaseMask, &te);
-            if (te.type == ButtonRelease)
+            /* кнопка отпущена? (событие придёт и от окна, и от корня) */
+            if (XCheckMaskEvent(dpy, ButtonReleaseMask, &te))
                 break;
+
+            if (!XQueryPointer(dpy, root, &rr, &ch, &rx, &ry, &wx, &wy)) {
+                XSync(dpy, False);
+                if (!XQueryPointer(dpy, root, &rr, &ch, &rx, &ry, &wx, &wy))
+                    break;
+            }
+
             if (!moving) {
-                int mdx = te.xmotion.x_root - grab_x;
-                int mdy = te.xmotion.y_root - grab_y;
+                int mdx = rx - grab_x, mdy = ry - grab_y;
                 if (mdx > 8 || mdy > 8 || mdx < -8 || mdy < -8)
                     moving = (c->isfloating = 1);
             }
             if (moving) {
-                c->x = te.xmotion.x_root - dx0;
-                c->y = te.xmotion.y_root - dy0;
+                if (!dragging) {
+                    XGrabPointer(dpy, c->win, False,
+                                 ButtonReleaseMask | PointerMotionMask,
+                                 GrabModeAsync, GrabModeAsync, None, None);
+                    dragging = 1;
+                }
+                c->x = rx - dx0;
+                c->y = ry - dy0;
                 c->ox = c->x; c->oy = c->y;
                 XMoveWindow(dpy, c->win, c->x, c->y);
             }
+            if (time(NULL) - started > 30)      /* страховка от залипания */
+                break;
+            usleep(12000);
         }
-        arrange();
+        if (dragging)
+            XUngrabPointer(dpy, CurrentTime);
+        if (moving)
+            arrange();
     } else if (be->button == Button3 && CLEANMASK(be->state) == MODKEY) {
         int sw = c->w, sh = c->h;
         c->isfloating = 1;
@@ -1330,6 +1357,8 @@ buttonpress(XEvent *e)
             XMaskEvent(dpy, PointerMotionMask | ButtonReleaseMask, &te);
             if (te.type == ButtonRelease)
                 break;
+            /* на всякий случай: если событий нет больше 30 секунд — выходим,
+             * иначе менеджер зависнет намертво */
             dx = te.xmotion.x_root - be->x_root;
             dy = te.xmotion.y_root - be->y_root;
             resize(c, c->x, c->y, MAX(sw + dx, MINW), MAX(sh + dy, MINH));
@@ -1566,7 +1595,8 @@ setup(void)
 
     XSelectInput(dpy, DefaultRootWindow(dpy),
                  SubstructureRedirectMask | SubstructureNotifyMask |
-                 ButtonPressMask | EnterWindowMask | KeyPressMask);
+                 ButtonPressMask | ButtonReleaseMask | PointerMotionMask |
+                 EnterWindowMask | KeyPressMask);
     grabkeys();
 
     for (m = monitors; m; m = m->next)
