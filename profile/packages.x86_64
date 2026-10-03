@@ -78,6 +78,8 @@ polkit-gnome
 # движок оконного менеджера (нужен для сборки lindu-wm при первом запуске)
 libx11
 libxinerama
+libxft
+fontconfig
 
 # шрифты
 ttf-dejavu
