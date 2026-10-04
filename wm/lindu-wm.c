@@ -188,8 +188,9 @@ getcolor(const char *name)
 }
 
 /* ------------------------- настройки и темы ---------------------------- */
-/* Всё живёт в ~/.config/lindu/theme.conf, файл перечитывается на лету:
- * тема и параметры применяются без перезапуска менеджера. */
+/* Всё живёт в ~/.config/lindu/theme.conf: цвета панели, её высота,
+ * формат часов, полоса для перетаскивания, ширина главного окна,
+ * анимации. Файл перечитывается на лету — применяется сразу. */
 
 static int   opt_barh     = BARH;
 static int   opt_dragtop  = DRAG_TOP;
@@ -199,125 +200,10 @@ static int   opt_bar      = 1;
 static char  opt_theme[32] = "dark";
 static int   opt_anim   = 1;        /* 1 = плавные переходы */
 
-/* ---- плавные переходы ------------------------------------------- */
-/* Прозрачности без композитора нет, поэтому анимация идёт через
- * геометрию: окно вырастает от центра и сжимается при закрытии. */
-
-static void
-hex2rgb(const char *hex, int *r, int *g, int *b)
-{
-    unsigned int v;
-    char c[64];
-
-    snprintf(c, sizeof(c), "%s", hex);
-    if (c[0] == '#')
-        memmove(c, c + 1, strlen(c) - 1 > 0 ? strlen(c) - 1 : 0);
-    v = (unsigned int)strtoul(c, NULL, 16);
-    *r = (v >> 16) & 0xff;
-    *g = (v >> 8) & 0xff;
-    *b = v & 0xff;
-}
-
-/* окно вырастает от центра до своего места */
-static void
-anim_open(Client *c)
-{
-    int f, frames = opt_anim ? 14 : 1;
-    int fx = c->x, fy = c->y, fw = c->w, fh = c->h;
-
-    if (frames == 1)
-        return;
-    for (f = 1; f <= frames; f++) {
-        double t = (double)f / frames;
-        double e = 1.0 - (1.0 - t) * (1.0 - t);   /* лёгкое ускорение */
-        int w = (int)(fw * (0.55 + 0.45 * e));
-        int h = (int)(fh * (0.55 + 0.45 * e));
-        XMoveResizeWindow(dpy, c->win, fx + (fw - w) / 2,
-                          fy + (fh - h) / 2, w, h);
-        XSync(dpy, False);
-        usleep(14000);
-    }
-    XMoveResizeWindow(dpy, c->win, fx, fy, fw, fh);
-    XSync(dpy, False);
-}
-
-/* окно сжимается в точку (закрытие) или к панели (сворачивание) */
-static void
-anim_shrink(Client *c, int to_panel)
-{
-    int f, frames = opt_anim ? 12 : 1;
-    int fx = c->x, fy = c->y, fw = c->w, fh = c->h;
-    int tx, ty;
-
-    if (frames == 1)
-        return;
-    if (to_panel)
-        ty = (c->mon ? c->mon->y + c->mon->h : fy + fh) - barh - 6;
-    else
-        ty = fy + fh / 2;
-    tx = fx + fw / 2;
-    for (f = 1; f <= frames; f++) {
-        double t = (double)f / frames;
-        int w = (int)(fw * (1.0 - t));
-        int h = (int)(fh * (1.0 - t));
-        if (w < 8)
-            w = 8;
-        if (h < 6)
-            h = 6;
-        XMoveResizeWindow(dpy, c->win, fx + (fw - w) / 2,
-                          fy + (int)((ty - fy) * t) - (h / 2) + (fh - h) / 2, w, h);
-        XSync(dpy, False);
-        usleep(14000);
-    }
-}
-
-/* плавный переход панели к новой теме */
-static void
-anim_theme(const char *ob, const char *ot, const char *oa, const char *ol)
-{
-    int f, frames = opt_anim ? 12 : 1;
-    int sr[3], sg[3], sb[3], dr[3], dg[3], db[3];
-    const char *to[3];
-
-    to[0] = cfg_bar; to[1] = cfg_text; to[2] = cfg_act;
-    hex2rgb(ob, &sr[0], &sg[0], &sb[0]);
-    hex2rgb(ot, &sr[1], &sg[1], &sb[1]);
-    hex2rgb(oa, &sr[2], &sg[2], &sb[2]);
-    hex2rgb(to[0], &dr[0], &dg[0], &db[0]);
-    hex2rgb(to[1], &dr[1], &dg[1], &db[1]);
-    hex2rgb(to[2], &dr[2], &dg[2], &db[2]);
-    (void)ol;
-    for (f = 1; f <= frames; f++) {
-        char hb[64], ht[64], ha[64];
-        int t = frames == 1 ? 1000 : (f * 1000) / frames;
-        snprintf(hb, sizeof(hb), "#%02x%02x%02x",
-                 sr[0] + ((dr[0] - sr[0]) * t) / 1000,
-                 sg[0] + ((dg[0] - sg[0]) * t) / 1000,
-                 sb[0] + ((db[0] - sb[0]) * t) / 1000);
-        snprintf(ht, sizeof(ht), "#%02x%02x%02x",
-                 sr[1] + ((dr[1] - sr[1]) * t) / 1000,
-                 sg[1] + ((dg[1] - sg[1]) * t) / 1000,
-                 sb[1] + ((db[1] - sb[1]) * t) / 1000);
-        snprintf(ha, sizeof(ha), "#%02x%02x%02x",
-                 sr[2] + ((dr[2] - sr[2]) * t) / 1000,
-                 sg[2] + ((dg[2] - sg[2]) * t) / 1000,
-                 sb[2] + ((db[2] - sb[2]) * t) / 1000);
-        col_inact   = getcolor(hb);
-        col_bar     = col_inact;
-        col_bartxt  = getcolor(ht);
-        col_baract  = getcolor(ha);
-        drawbars();
-        XSync(dpy, False);
-        usleep(22000);
-    }
-    applycolors();
-}
-
 static char  cfg_bar[64]  = ACTIVE;
 static char  cfg_text[64] = ACCENT;
 static char  cfg_act[64]  = BARACT;
 static char  cfg_line[64] = BARLINE;
-
 static time_t cfgmtime = 0;
 
 static void
@@ -330,7 +216,6 @@ applycolors(void)
     col_barline = getcolor(cfg_line);
 }
 
-/* применить размеры и видимость панели */
 static void
 applybar(void)
 {
@@ -406,7 +291,116 @@ loadconfig(void)
     applycolors();
 }
 
-/* следить за файлом настроек и применять изменения на лету */
+/* Плавные переходы. Прозрачности без композитора нет, поэтому
+ * анимация идёт через геометрию: окно вырастает от центра,
+ * сжимается при закрытии и улетает к панели при сворачивании. */
+
+static void
+hex2rgb(const char *hex, int *r, int *g, int *b)
+{
+    unsigned int v;
+    char c[64];
+
+    snprintf(c, sizeof(c), "%s", hex);
+    if (c[0] == '#')
+        memmove(c, c + 1, strlen(c) - 1 > 0 ? strlen(c) - 1 : 0);
+    v = (unsigned int)strtoul(c, NULL, 16);
+    *r = (v >> 16) & 0xff;
+    *g = (v >> 8) & 0xff;
+    *b = v & 0xff;
+}
+
+static void
+anim_open(Client *c)
+{
+    int f, frames = opt_anim ? 14 : 1;
+    int fx = c->x, fy = c->y, fw = c->w, fh = c->h;
+
+    if (frames == 1)
+        return;
+    for (f = 1; f <= frames; f++) {
+        double t = (double)f / frames;
+        double e = 1.0 - (1.0 - t) * (1.0 - t);   /* лёгкое ускорение */
+        int w = (int)(fw * (0.55 + 0.45 * e));
+        int h = (int)(fh * (0.55 + 0.45 * e));
+        XMoveResizeWindow(dpy, c->win, fx + (fw - w) / 2,
+                          fy + (fh - h) / 2, w, h);
+        XSync(dpy, False);
+        usleep(14000);
+    }
+    XMoveResizeWindow(dpy, c->win, fx, fy, fw, fh);
+    XSync(dpy, False);
+}
+
+static void
+anim_shrink(Client *c, int to_panel)
+{
+    int f, frames = opt_anim ? 12 : 1;
+    int fx = c->x, fy = c->y, fw = c->w, fh = c->h;
+    int ty;
+
+    if (frames == 1)
+        return;
+    if (to_panel)
+        ty = (c->mon ? c->mon->y + c->mon->h : fy + fh) - barh - 6;
+    else
+        ty = fy + fh / 2;
+    for (f = 1; f <= frames; f++) {
+        double t = (double)f / frames;
+        int w = (int)(fw * (1.0 - t));
+        int h = (int)(fh * (1.0 - t));
+        if (w < 8)
+            w = 8;
+        if (h < 6)
+            h = 6;
+        XMoveResizeWindow(dpy, c->win, fx + (fw - w) / 2,
+                          fy + (int)((ty - fy) * t) - (h / 2) + (fh - h) / 2, w, h);
+        XSync(dpy, False);
+        usleep(14000);
+    }
+}
+
+static void
+anim_theme(const char *ob, const char *ot, const char *oa, const char *ol)
+{
+    int f, frames = opt_anim ? 12 : 1;
+    int sr[3], sg[3], sb[3], dr[3], dg[3], db[3];
+    const char *to[3];
+
+    to[0] = cfg_bar; to[1] = cfg_text; to[2] = cfg_act;
+    hex2rgb(ob, &sr[0], &sg[0], &sb[0]);
+    hex2rgb(ot, &sr[1], &sg[1], &sb[1]);
+    hex2rgb(oa, &sr[2], &sg[2], &sb[2]);
+    hex2rgb(to[0], &dr[0], &dg[0], &db[0]);
+    hex2rgb(to[1], &dr[1], &dg[1], &db[1]);
+    hex2rgb(to[2], &dr[2], &dg[2], &db[2]);
+    (void)ol;
+    for (f = 1; f <= frames; f++) {
+        char hb[64], ht[64], ha[64];
+        int t = frames == 1 ? 1000 : (f * 1000) / frames;
+        snprintf(hb, sizeof(hb), "#%02x%02x%02x",
+                 sr[0] + ((dr[0] - sr[0]) * t) / 1000,
+                 sg[0] + ((dg[0] - sg[0]) * t) / 1000,
+                 sb[0] + ((db[0] - sb[0]) * t) / 1000);
+        snprintf(ht, sizeof(ht), "#%02x%02x%02x",
+                 sr[1] + ((dr[1] - sr[1]) * t) / 1000,
+                 sg[1] + ((dg[1] - sg[1]) * t) / 1000,
+                 sb[1] + ((db[1] - sb[1]) * t) / 1000);
+        snprintf(ha, sizeof(ha), "#%02x%02x%02x",
+                 sr[2] + ((dr[2] - sr[2]) * t) / 1000,
+                 sg[2] + ((dg[2] - sg[2]) * t) / 1000,
+                 sb[2] + ((db[2] - sb[2]) * t) / 1000);
+        col_inact   = getcolor(hb);
+        col_bar     = col_inact;
+        col_bartxt  = getcolor(ht);
+        col_baract  = getcolor(ha);
+        drawbars();
+        XSync(dpy, False);
+        usleep(22000);
+    }
+    applycolors();
+}
+
 static void
 checkconfig(void)
 {
