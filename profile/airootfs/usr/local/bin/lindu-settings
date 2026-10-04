@@ -139,6 +139,25 @@ def apply_keyboard(layout):
             fh.write('\tOption "XkbLayout" "%s"\n' % layout)
 
 
+def hex_to_rgb(color):
+    """#rrggbb -> (r, g, b)"""
+    c = color.lstrip("#")
+    if len(c) == 3:
+        c = "".join(ch * 2 for ch in c)
+    try:
+        return (int(c[0:2], 16), int(c[2:4], 16), int(c[4:6], 16))
+    except ValueError:
+        return (128, 128, 128)
+
+
+def swatch(color, width=26, height=26):
+    """образец цвета для списка тем"""
+    from gi.repository import GdkPixbuf
+    pb = GdkPixbuf.Pixbuf.new(GdkPixbuf.Colorspace.RGB, False, 8, width, height)
+    pb.fill(pb.new_area(0, 0, width, height), hex_to_rgb(color))
+    return Gtk.Image.new_from_pixbuf(pb)
+
+
 class Page(Gtk.Box):
     """общая основа страницы: заголовок, пояснение, поля"""
 
@@ -229,10 +248,7 @@ class SettingsWindow(Gtk.Window):
             sw = Gtk.Box()
             sw.set_size_request(96, 30)
             for color in (bar, act, line):
-                cell = Gtk.Box()
-                cell.override_background_color(Gdk.RGBA())
-                cell.override_background_color(Gdk.RGBA.parse(color))
-                sw.pack_start(cell, True, True, 0)
+                sw.pack_start(swatch(color), True, True, 0)
             box.pack_start(sw, False, False, 0)
             lbl = Gtk.Label(label=title)
             lbl.set_xalign(0.0)
@@ -427,10 +443,28 @@ class SettingsWindow(Gtk.Window):
 
 
 def main():
-    win = SettingsWindow()
-    win.connect("destroy", Gtk.main_quit)
-    win.show_all()
-    Gtk.main()
+    try:
+        win = SettingsWindow()
+        win.connect("destroy", Gtk.main_quit)
+        win.show_all()
+        Gtk.main()
+    except Exception:
+        # причина ошибки - в журнал и на экран, чтобы не гадать
+        import traceback
+        text = traceback.format_exc()
+        try:
+            path = os.path.join(HOME, ".lindu-settings.log")
+            with open(path, "w", encoding="utf-8") as fh:
+                fh.write(text)
+        except OSError:
+            pass
+        last = text.strip().splitlines()[-1] if text.strip() else "неизвестная ошибка"
+        dlg = Gtk.MessageDialog(None, Gtk.DialogFlags.MODAL,
+                                Gtk.MessageType.ERROR, Gtk.ButtonsType.CLOSE,
+                                "Не удалось открыть настройки")
+        dlg.format_secondary_text("%s\n\nПодробности: ~/.lindu-settings.log" % last)
+        dlg.run()
+        dlg.destroy()
 
 
 if __name__ == "__main__":
