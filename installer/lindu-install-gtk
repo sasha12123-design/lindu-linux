@@ -763,6 +763,15 @@ grub-mkconfig -o /boot/grub/grub.cfg
         if os.path.exists("/usr/local/bin/lind" "u-wifi"):
             self.run(["install", "-D", "-m755", "/usr/local/bin/lind" "u-wifi",
                       MOUNT + "/usr/local/bin/lind" "u-wifi"], "lindu-wifi")
+        # программа настроек (кнопка-шестерёнка на панели)
+        if os.path.exists("/usr/local/bin/lind" "u-settings"):
+            self.run(["install", "-D", "-m755", "/usr/local/bin/lind" "u-settings",
+                      MOUNT + "/usr/local/bin/lind" "u-settings"], "настройки")
+        if os.path.exists("/usr/share/applications/lind" "u-settings.desktop"):
+            self.run(["install", "-D", "-m644",
+                      "/usr/share/applications/lind" "u-settings.desktop",
+                      MOUNT + "/usr/share/applications/lind" "u-settings.desktop"],
+                     "ярлык настроек")
         if os.path.exists("/usr/share/applications/lind" "u-wifi.desktop"):
             self.run(["install", "-D", "-m644",
                       "/usr/share/applications/lind" "u-wifi.desktop",
