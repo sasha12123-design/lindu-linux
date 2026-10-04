@@ -28,7 +28,7 @@ os.environ.setdefault("DISPLAY", ":0")
 
 import gi
 gi.require_version("Gtk", "3.0")
-from gi.repository import Gtk, GLib
+from gi.repository import Gtk, Gdk, GLib
 
 VERSION = "1.2"
 MOUNT = "/mnt"
@@ -320,6 +320,9 @@ class InstallerWindow(Gtk.ApplicationWindow):
         self.bt_savelog = Gtk.Button(label="Сохранить журнал на носитель")
         self.bt_savelog.connect("clicked", self.on_save_log)
         row.pack_start(self.bt_savelog, False, False, 0)
+        self.bt_copylog = Gtk.Button(label="Скопировать журнал")
+        self.bt_copylog.connect("clicked", self.on_copy_log)
+        row.pack_start(self.bt_copylog, False, False, 0)
         row.pack_start(Gtk.Label(label="флешка/карта памяти с FAT32 — подойдёт любая, "
                                        "кроме загрузочной", halign=Gtk.Align.START),
                        True, True, 0)
@@ -340,6 +343,54 @@ class InstallerWindow(Gtk.ApplicationWindow):
         p.pack_start(self.bt_reboot, False, False, 0)
         self.done_idx = len(self.pages)
         return self.add_page(p)
+
+    # ---------- отчёт в буфер обмена ----------
+
+    def report_text(self, done=None):
+        """Полный текст отчёта: файл отчёта, иначе журнал + состояние."""
+        done = done or {}
+        text = ""
+        path = done.get("file")
+        if path and os.path.isfile(path):
+            try:
+                with open(path, "r", encoding="utf-8", errors="replace") as fh:
+                    text = fh.read()
+            except Exception:
+                text = ""
+        if not text:
+            try:
+                text = self.logbuf.get_text(self.logbuf.get_start_iter(),
+                                            self.logbuf.get_end_iter(), True)
+            except Exception:
+                text = ""
+        head = ["lindu linux — отчёт об установке",
+                "версия установщика: %s" % VERSION,
+                "диск: %s" % ((self.setup or {}).get("disk") or "не выбран"),
+                ""]
+        return "\n".join(head) + text
+
+    def copy_to_clipboard(self, text):
+        try:
+            Gtk.Clipboard.get(Gdk.SELECTION_CLIPBOARD).set_text(text, -1)
+            Gtk.Clipboard.get(Gdk.SELECTION_CLIPBOARD).store()
+            return True
+        except Exception as e:
+            print("буфер обмена: %s" % e)
+            return False
+
+    def on_copy_log(self, w=None):
+        """Журнал установки в буфер обмена (на случай зависания)."""
+        text = self.report_text()
+        if self.copy_to_clipboard(text):
+            d = Gtk.MessageDialog(transient_for=self,
+                                  message_type=Gtk.MessageType.INFO,
+                                  buttons=Gtk.ButtonsType.CLOSE,
+                                  text="Журнал скопирован")
+            d.format_secondary_text(
+                "Вставьте его в сообщение (Ctrl+V) — так его можно передать "
+                "без флешки и без Linux.\n\nСимволов: %d" % len(text))
+            d.run()
+            d.destroy()
 
     # ---------- навигация ----------
 
@@ -820,7 +871,7 @@ systemctl enable getty@tty1
             buf = ""
         d = Gtk.MessageDialog(transient_for=self,
                               message_type=Gtk.MessageType.ERROR,
-                              buttons=Gtk.ButtonsType.CLOSE,
+                              buttons=Gtk.ButtonsType.NONE,
                               text="Установка не завершена")
         body = msg or ""
         try:
@@ -837,11 +888,25 @@ systemctl enable getty@tty1
                      % (done.get("file") or "отчёт",
                         "\n".join("- " + p for p in paths)))
         else:
-            body += ("\n\nОтчёт удалось сохранить только в оперативной памяти: %s\n"
-                     "Вставьте флешку с FAT32 (или карту памяти) и повторите "
-                     "установку — журнал будет писаться на носитель."
+            body += ("\n\nОтчёт сохранён только в оперативной памяти: %s\n"
+                     "Нажмите «Скопировать отчёт» и вставьте текст в сообщение "
+                     "(Ctrl+V) — флешка не нужна.\n"
+                     "Либо вставьте накопитель с FAT32 (карту памяти, флешку — "
+                     "любую, кроме загрузочной) и нажмите «Сохранить журнал "
+                     "на носитель»."
                      % (done.get("file") or LOGPATH))
         d.format_secondary_text(body)
+
+        def do_copy(w):
+            txt = self.report_text(done)
+            if self.copy_to_clipboard(txt):
+                b.set_label("Скопировано")
+                b.set_sensitive(False)
+
+        b = d.add_button("Скопировать отчёт", 1)
+        b.connect("clicked", do_copy)
+        d.add_button("Закрыть", Gtk.ResponseType.CLOSE)
+        d.set_default_response(Gtk.ResponseType.CLOSE)
         d.run()
         d.destroy()
         self.goto(self.install_idx)
