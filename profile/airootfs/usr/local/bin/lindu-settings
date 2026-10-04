@@ -47,6 +47,7 @@ DEFAULTS = {
     "showbar": 1,
     "dragtop": 84,
     "master": 55,
+    "anim": 1,
     "layout": "us,ru",
 }
 
@@ -69,7 +70,7 @@ def read_conf():
 def write_conf(values):
     os.makedirs(CONF_DIR, exist_ok=True)
     order = ("name", "bar", "text", "act", "line", "barh", "clock",
-             "showbar", "dragtop", "master")
+             "showbar", "dragtop", "master", "anim")
     with open(CONF, "w", encoding="utf-8") as fh:
         fh.write("# настройки рабочего стола lindu linux\n")
         fh.write("# изменяется программой настроек, применяется сразу\n")
@@ -404,13 +405,18 @@ class SettingsWindow(Gtk.Window):
         self.master.set_numeric(True)
         grid.attach(self.master, 1, 0, 1, 1)
 
+        grid.attach(Gtk.Label(label="Плавные анимации:", xalign=0.0), 0, 1, 1, 1)
+        self.anim = Gtk.Switch(active=bool(int(self.values.get("anim", 1))))
+        self.anim.set_halign(Gtk.Align.START)
+        grid.attach(self.anim, 1, 1, 1, 1)
+
         grid.attach(Gtk.Label(label="Полоса для перетаскивания, px:", xalign=0.0),
-                    0, 1, 1, 1)
+                    0, 2, 1, 1)
         adj2 = Gtk.Adjustment(value=int(self.values.get("dragtop", 84)),
                               lower=30, upper=320, step_increment=8, page_increment=24)
         self.dragtop = Gtk.SpinButton(adjustment=adj2, climb_rate=1, digits=0)
         self.dragtop.set_numeric(True)
-        grid.attach(self.dragtop, 1, 1, 1, 1)
+        grid.attach(self.dragtop, 1, 2, 1, 1)
 
         keys = Gtk.Label(label="Полезные клавиши:\n"
                               "    Win — перетащить окно из любой точки\n"
@@ -519,6 +525,7 @@ class SettingsWindow(Gtk.Window):
         self.values["showbar"] = 1 if self.showbar.get_active() else 0
         self.values["dragtop"] = int(self.dragtop.get_value())
         self.values["master"] = int(self.master.get_value())
+        self.values["anim"] = 1 if self.anim.get_active() else 0
         self.values["layout"] = self.layout.get_active_id() or "us"
 
         write_conf(self.values)
