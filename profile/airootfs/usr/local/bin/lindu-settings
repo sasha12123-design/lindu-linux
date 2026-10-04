@@ -92,29 +92,117 @@ def apply_gtk_theme(theme):
 
 
 def apply_rofi(values):
-    """цвета списков rofi в тон панели"""
+    """красивые списки в тон панели: скруглённые углы, иконки, анимация"""
     os.makedirs(ROFI_DIR, exist_ok=True)
-    body = """/* оформление списков в тон панели - меняется программой настроек */
+    tmpl = """/* lindu linux — оформление списков (программы, окна, сети).
+   Цвета подставляет программа настроек: ~/.config/lindu/theme.conf */
+
 configuration {{
-    display-drun:  "программы";
-    modi:          "window,drun";
-    location:      center;
-    anchor:        center;
-    width:         60%;
-    lines:         14;
-    border:        0;
-    spacing:       4;
-    padding:       10;
-    background:    {bar};
-    text-color:    {text};
-    selected-normal: {act};
-    selected-text:  {line};
-    border-color:  {line};
+    modi: "drun,window";
+    display-drun: "Программы";
+    display-window: "Окна";
+    drun-display-format: "{{name}}";
+    font: "DejaVu Sans 12";
+    show-icons: true;
+    icon-theme: "hicolor";
+    display-drun-icons: true;
+    display-window-icons: true;
+
+    /* окно списка можно таскать мышью */
+    window-dragging: enable;
+
+    /* анимация появления и исчезновения списка */
+    animations: "sway";
+    animation-duration: 12;
+
+    location: center;
+    anchor: center;
+    width: 60%;
+    lines: 14;
+    border: 0px;
+    border-radius: 18px;
+    background: {bar};
+    padding: 14px 18px;
+    spacing: 12px;
+}}
+
+* {{
+    background: transparent;
+    text-color: {text};
+    margin: 0px;
+    padding: 0px;
+    border: 0px;
+}}
+
+/* окно списка */
+window {{
+    border: 0px;
+    border-radius: 18px;
+    background: {bar};
+    padding: 14px 18px;
+    spacing: 12px;
+}}
+
+/* строка поиска и ввода пароля */
+inputbar {{
+    background: {act};
+    text-color: #ffffff;
+    padding: 10px 14px;
+    spacing: 10px;
+    border-radius: 12px;
+}}
+text-input {{
+    background: {act};
+    text-color: #ffffff;
+    border: 0px;
+    border-radius: 12px;
+    padding: 8px 10px;
+}}
+element place-holder {{
+    text-color: {line};
+}}
+
+/* список */
+listview {{
+    background: transparent;
+    lines: 14;
+    spacing: 4px;
+    scrollbar: false;
+    fixed-height: false;
+    cycle: true;
+    dynamic: true;
+}}
+
+/* строка списка */
+element {{
+    background: transparent;
+    text-color: {text};
+    padding: 10px 14px;
+    spacing: 14px;
+    border-radius: 12px;
+}}
+element selected {{
+    background: {act};
+    text-color: {line};
+}}
+element normal {{ }}
+element urgent {{ }}
+element active {{
+    background: {act};
+    text-color: #ffffff;
+}}
+
+element-icon {{
+    size: 26px;
+    vertical-align: 0.5;
+    padding: 0px 4px 0px 0px;
+}}
+element-text {{
+    vertical-align: 0.5;
 }}
 """
-    body = body.format(**values)
     with open(ROFI_CFG, "w", encoding="utf-8") as fh:
-        fh.write(body)
+        fh.write(tmpl.format(**values))
 
 
 def apply_keyboard(layout):
