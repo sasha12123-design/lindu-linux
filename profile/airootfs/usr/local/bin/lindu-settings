@@ -102,68 +102,58 @@ configuration {{
     modi: "drun,window";
     display-drun: "Программы";
     display-window: "Окна";
-    drun-display-format: "{{name}}";
     font: "DejaVu Sans 12";
     show-icons: true;
     icon-theme: "hicolor";
-    display-drun-icons: true;
-    display-window-icons: true;
-
-    /* окно списка можно таскать мышью */
-    window-dragging: enable;
-
-    /* анимация появления и исчезновения списка */
-    animations: "sway";
-    animation-duration: 12;
-
+    drun-display-format: "{{name}}";
     location: center;
     anchor: center;
     width: 60%;
     lines: 14;
-    border: 0px;
+    border: 0;
     border-radius: 18px;
-    background: {bar};
-    padding: 14px 18px;
-    spacing: 12px;
+    padding: 12px 16px;
+    spacing: 10px;
+    animations: "sway";
+    animation-duration: 12;
+    window-dragging: 8;
 }}
 
 * {{
     background: transparent;
     text-color: {text};
+    border: 0;
     margin: 0px;
     padding: 0px;
-    border: 0px;
 }}
 
-/* окно списка */
 window {{
-    border: 0px;
-    border-radius: 18px;
     background: {bar};
-    padding: 14px 18px;
-    spacing: 12px;
+    border-radius: 18px;
+    padding: 12px 16px;
+    spacing: 10px;
 }}
 
-/* строка поиска и ввода пароля */
 inputbar {{
     background: {act};
     text-color: #ffffff;
-    padding: 10px 14px;
-    spacing: 10px;
+    padding: 8px 12px;
+    spacing: 8px;
     border-radius: 12px;
 }}
+
 text-input {{
     background: {act};
     text-color: #ffffff;
-    border: 0px;
+    border: 0;
     border-radius: 12px;
-    padding: 8px 10px;
+    padding: 6px 8px;
 }}
+
 element place-holder {{
     text-color: {line};
 }}
 
-/* список */
 listview {{
     background: transparent;
     lines: 14;
@@ -174,30 +164,30 @@ listview {{
     dynamic: true;
 }}
 
-/* строка списка */
 element {{
     background: transparent;
     text-color: {text};
-    padding: 10px 14px;
-    spacing: 14px;
-    border-radius: 12px;
+    padding: 8px 12px;
+    spacing: 10px;
+    border-radius: 10px;
 }}
+
 element selected {{
     background: {act};
     text-color: {line};
 }}
-element normal {{ }}
-element urgent {{ }}
+
 element active {{
     background: {act};
     text-color: #ffffff;
 }}
 
 element-icon {{
-    size: 26px;
+    size: 24px;
     vertical-align: 0.5;
-    padding: 0px 4px 0px 0px;
+    padding: 0px;
 }}
+
 element-text {{
     vertical-align: 0.5;
 }}
@@ -239,12 +229,29 @@ def hex_to_rgb(color):
         return (128, 128, 128)
 
 
-def swatch(color, width=26, height=26):
-    """образец цвета для списка тем"""
-    from gi.repository import GdkPixbuf
-    pb = GdkPixbuf.Pixbuf.new(GdkPixbuf.Colorspace.RGB, False, 8, width, height)
-    pb.fill(pb.new_area(0, 0, width, height), hex_to_rgb(color))
-    return Gtk.Image.new_from_pixbuf(pb)
+def swatch(color, width=28, height=28):
+    """образец цвета: кружок, нарисованный через Cairo (надёжно в GTK3)"""
+    area = Gtk.DrawingArea()
+    area.set_size_request(width, height)
+    rgba = Gdk.RGBA()
+    try:
+        rgba.parse(color)
+    except Exception:
+        rgba.parse("#808080")
+    r, g, b = rgba.red, rgba.green, rgba.blue
+
+    def on_draw(widget, cr):
+        rad = min(width, height) / 2.0 - 1
+        cr.set_source_rgb(r, g, b)
+        cr.arc(width / 2.0, height / 2.0, rad, 0, 6.2832)
+        cr.fill()
+        cr.set_source_rgba(1, 1, 1, 0.35)
+        cr.set_line_width(1)
+        cr.arc(width / 2.0, height / 2.0, rad, 0, 6.2832)
+        cr.stroke()
+
+    area.connect("draw", on_draw)
+    return area
 
 
 class Page(Gtk.Box):
