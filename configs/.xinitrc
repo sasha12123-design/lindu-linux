@@ -30,9 +30,9 @@ xhost +local: >/dev/null 2>&1
 
 # фон рабочего стола
 if [ -f /usr/share/backgrounds/lindu.png ]; then
-    feh --bg-scale /usr/share/backgrounds/lindu.png
+    feh --bg-fill /usr/share/backgrounds/lindu.png
 else
-    xsetroot -solid "#0b0e12"
+    xsetroot -solid "#0a0f22"
 fi
 
 # первый вход в live-сессию: показываем установщик на рабочем столе
