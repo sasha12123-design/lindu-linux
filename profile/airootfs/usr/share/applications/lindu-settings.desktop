@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=Настройки системы
+Name[en]=System Settings
+Comment=Оформление, панель, окна, клавиатура
+Comment[en]=Appearance, panel, windows, keyboard
+Exec=/usr/local/bin/lind""u-settings
+Icon=preferences-system
+Terminal=false
+Categories=Settings;DesktopSettings;System;
