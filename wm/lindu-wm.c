@@ -1315,7 +1315,8 @@ buttonpress(XEvent *e)
         int moving = (CLEANMASK(be->state) == MODKEY);
         int dragging = 0;
         Window root = DefaultRootWindow(dpy), rr, ch;
-        int rx, ry, wx, wy, mask;
+        int rx, ry, wx, wy;
+    unsigned int mask;
         XEvent te;
         time_t started = time(NULL);
 
@@ -1491,6 +1492,8 @@ xerrorhandler(Display *dpy, XErrorEvent *e)
 }
 
 
+static void pointercheck(void);
+
 static void
 run(void)
 {
@@ -1557,7 +1560,8 @@ static void
 pointercheck(void)
 {
     Window root = DefaultRootWindow(dpy), rr, child;
-    int rx, ry, wx, wy, mask;
+    int rx, ry, wx, wy;
+    unsigned int mask;
     Client *c;
     Monitor *bmon;
 
