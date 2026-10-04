@@ -5,68 +5,58 @@ configuration {
     modi: "drun,window";
     display-drun: "Программы";
     display-window: "Окна";
-    drun-display-format: "{name}";
     font: "DejaVu Sans 12";
     show-icons: true;
     icon-theme: "hicolor";
-    display-drun-icons: true;
-    display-window-icons: true;
-
-    /* окно списка можно таскать мышью */
-    window-dragging: enable;
-
-    /* анимация появления и исчезновения списка */
-    animations: "sway";
-    animation-duration: 12;
-
+    drun-display-format: "{name}";
     location: center;
     anchor: center;
     width: 60%;
     lines: 14;
-    border: 0px;
+    border: 0;
     border-radius: 18px;
-    background: #1b2340;
-    padding: 14px 18px;
-    spacing: 12px;
+    padding: 12px 16px;
+    spacing: 10px;
+    animations: "sway";
+    animation-duration: 12;
+    window-dragging: 8;
 }
 
 * {
     background: transparent;
     text-color: #e8ecf8;
+    border: 0;
     margin: 0px;
     padding: 0px;
-    border: 0px;
 }
 
-/* окно списка */
 window {
-    border: 0px;
-    border-radius: 18px;
     background: #1b2340;
-    padding: 14px 18px;
-    spacing: 12px;
+    border-radius: 18px;
+    padding: 12px 16px;
+    spacing: 10px;
 }
 
-/* строка поиска и ввода пароля */
 inputbar {
     background: #2f3f75;
     text-color: #ffffff;
-    padding: 10px 14px;
-    spacing: 10px;
+    padding: 8px 12px;
+    spacing: 8px;
     border-radius: 12px;
 }
+
 text-input {
     background: #2f3f75;
     text-color: #ffffff;
-    border: 0px;
+    border: 0;
     border-radius: 12px;
-    padding: 8px 10px;
+    padding: 6px 8px;
 }
+
 element place-holder {
     text-color: #7fd4f0;
 }
 
-/* список */
 listview {
     background: transparent;
     lines: 14;
@@ -77,30 +67,30 @@ listview {
     dynamic: true;
 }
 
-/* строка списка */
 element {
     background: transparent;
     text-color: #e8ecf8;
-    padding: 10px 14px;
-    spacing: 14px;
-    border-radius: 12px;
+    padding: 8px 12px;
+    spacing: 10px;
+    border-radius: 10px;
 }
+
 element selected {
     background: #2f3f75;
     text-color: #7fd4f0;
 }
-element normal { }
-element urgent { }
+
 element active {
     background: #2f3f75;
     text-color: #ffffff;
 }
 
 element-icon {
-    size: 26px;
+    size: 24px;
     vertical-align: 0.5;
-    padding: 0px 4px 0px 0px;
+    padding: 0px;
 }
+
 element-text {
     vertical-align: 0.5;
 }
