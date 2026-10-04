@@ -164,7 +164,8 @@ static void tagmon(const Arg *arg);
 static const Arg arg_rofi = SHCMD("rofi -show drun");
 static const Arg arg_inst = SHCMD("/usr/local/bin/lindu-install-gtk");
 /* имя скрипта Wi-Fi (склейка литералов) */
-static const Arg arg_wifi = SHCMD("/usr/local/bin/lin""du-wifi");
+static const Arg arg_wifi = SHCMD("/usr/local/bin/lind""u-wifi");
+static const Arg arg_setup = SHCMD("/usr/local/bin/lind""u-settings");
 
 /* ----------------------------- утилиты ------------------------------ */
 
@@ -183,6 +184,130 @@ getcolor(const char *name)
     if (!XAllocNamedColor(dpy, cmap, name, &c, &c))
         return BlackPixel(dpy, screen);
     return c.pixel;
+}
+
+/* ------------------------- настройки и темы ---------------------------- */
+/* Всё живёт в ~/.config/lindu/theme.conf, файл перечитывается на лету:
+ * тема и параметры применяются без перезапуска менеджера. */
+
+static int   opt_barh     = BARH;
+static int   opt_dragtop  = DRAG_TOP;
+static int   opt_clock    = 1;        /* 0 = ЧЧ:ММ, 1 = ЧЧ:ММ ДД.ММ, 2 = секунды */
+static int   opt_master   = MASTERFACTOR;
+static int   opt_bar      = 1;
+static char  opt_theme[32] = "dark";
+
+static char  cfg_bar[64]  = ACTIVE;
+static char  cfg_text[64] = ACCENT;
+static char  cfg_act[64]  = BARACT;
+static char  cfg_line[64] = BARLINE;
+
+static time_t cfgmtime = 0;
+
+static void
+applycolors(void)
+{
+    col_inact   = getcolor(cfg_bar);
+    col_bar     = col_inact;
+    col_bartxt  = getcolor(cfg_text);
+    col_baract  = getcolor(cfg_act);
+    col_barline = getcolor(cfg_line);
+}
+
+/* применить размеры и видимость панели */
+static void
+applybar(void)
+{
+    Monitor *mon;
+
+    barh = barvisible ? opt_barh : 0;
+    for (mon = monitors; mon; mon = mon->next) {
+        if (barh > 0) {
+            XMoveResizeWindow(dpy, mon->barwin, mon->x, mon->y + mon->h - barh,
+                              mon->w, barh);
+            XMapWindow(dpy, mon->barwin);
+        } else {
+            XUnmapWindow(dpy, mon->barwin);
+        }
+    }
+    barvisible = barh > 0;
+    XFlush(dpy);
+}
+
+static void
+loadconfig(void)
+{
+    char path[512], ln[256], key[64], val[64];
+    const char *home = getenv("HOME");
+    FILE *f;
+    char *p;
+
+    if (!home)
+        return;
+    snprintf(path, sizeof(path), "%s/.config/lindu/theme.conf", home);
+    f = fopen(path, "r");
+    if (f) {
+        while (fgets(ln, sizeof(ln), f)) {
+            if (sscanf(ln, "%63s = %63s", key, val) != 2)
+                continue;
+            for (p = val; *p; p++)
+                if (*p == '"' || *p == '\'')
+                    *p = '\0';
+            if (!strcmp(key, "bar"))
+                snprintf(cfg_bar, sizeof(cfg_bar), "%s", val);
+            else if (!strcmp(key, "text"))
+                snprintf(cfg_text, sizeof(cfg_text), "%s", val);
+            else if (!strcmp(key, "act"))
+                snprintf(cfg_act, sizeof(cfg_act), "%s", val);
+            else if (!strcmp(key, "line"))
+                snprintf(cfg_line, sizeof(cfg_line), "%s", val);
+            else if (!strcmp(key, "barh"))
+                opt_barh = atoi(val);
+            else if (!strcmp(key, "dragtop"))
+                opt_dragtop = atoi(val);
+            else if (!strcmp(key, "clock"))
+                opt_clock = atoi(val);
+            else if (!strcmp(key, "master"))
+                opt_master = atoi(val);
+            else if (!strcmp(key, "showbar"))
+                opt_bar = atoi(val);
+            else if (!strcmp(key, "name"))
+                snprintf(opt_theme, sizeof(opt_theme), "%s", val);
+        }
+        fclose(f);
+    }
+    if (opt_barh < 26 || opt_barh > 64)
+        opt_barh = BARH;
+    if (opt_dragtop < 30 || opt_dragtop > 320)
+        opt_dragtop = DRAG_TOP;
+    if (opt_master < 35 || opt_master > 75)
+        opt_master = MASTERFACTOR;
+    if (opt_clock < 0 || opt_clock > 2)
+        opt_clock = 1;
+    opt_bar = opt_bar ? 1 : 0;
+    applycolors();
+}
+
+/* следить за файлом настроек и применять изменения на лету */
+static void
+checkconfig(void)
+{
+    char path[512];
+    const char *home = getenv("HOME");
+    struct stat st;
+
+    if (!home)
+        return;
+    snprintf(path, sizeof(path), "%s/.config/lindu/theme.conf", home);
+    if (stat(path, &st) != 0)
+        return;
+    if ((time_t)st.st_mtime == cfgmtime)
+        return;
+    cfgmtime = (time_t)st.st_mtime;
+    loadconfig();
+    applybar();
+    arrange();
+    drawbars();
 }
 
 /* --------------------------- мониторы -------------------------------- */
@@ -473,10 +598,10 @@ tile(Monitor *mon)
         if (c->ishidden)
             continue;
         if (i == 0)
-            resize(c, x, y, w * MASTERFACTOR / 100, h);
+            resize(c, x, y, w * opt_master / 100, h);
         else
-            resize(c, x + w * MASTERFACTOR / 100, y + (i - 1) * mh,
-                   w - w * MASTERFACTOR / 100, mh);
+            resize(c, x + w * opt_master / 100, y + (i - 1) * mh,
+                   w - w * opt_master / 100, mh);
         i++;
     }
 }
@@ -606,6 +731,20 @@ baricon(Monitor *mon, int cx, int cy, int kind)
                      40 * 64, 100 * 64);
         XSetLineAttributes(dpy, bargc, 0, LineSolid, CapButt, JoinMiter);
         XFillRectangle(dpy, mon->barwin, bargc, cx - 2, cy + 8, 4, 4);
+    } else if (kind == 5) {
+        /* шестерёнка: настройки системы */
+        XChangeGC(dpy, bargc, GCLineWidth | GCCapStyle | GCJoinStyle, &gcv);
+        XDrawArc(dpy, mon->barwin, bargc, cx - 6, cy - 6, 12, 12, 0, 360 * 64);
+        XDrawArc(dpy, mon->barwin, bargc, cx - 2, cy - 2, 4, 4, 0, 360 * 64);
+        XSetLineAttributes(dpy, bargc, 0, LineSolid, CapButt, JoinMiter);
+        XFillRectangle(dpy, mon->barwin, bargc, cx - 1, cy - 10, 2, 4);
+        XFillRectangle(dpy, mon->barwin, bargc, cx - 1, cy + 6, 2, 4);
+        XFillRectangle(dpy, mon->barwin, bargc, cx - 10, cy - 1, 4, 2);
+        XFillRectangle(dpy, mon->barwin, bargc, cx + 6, cy - 1, 4, 2);
+        XFillRectangle(dpy, mon->barwin, bargc, cx - 8, cy - 8, 3, 3);
+        XFillRectangle(dpy, mon->barwin, bargc, cx + 5, cy - 8, 3, 3);
+        XFillRectangle(dpy, mon->barwin, bargc, cx - 8, cy + 5, 3, 3);
+        XFillRectangle(dpy, mon->barwin, bargc, cx + 5, cy + 5, 3, 3);
     } else if (kind == 4) {
         /* крестик: закрыть активное окно */
         XChangeGC(dpy, bargc, GCLineWidth | GCCapStyle | GCJoinStyle, &gcv);
@@ -703,7 +842,7 @@ bartasks(Monitor *mon)
 {
     Client *c;
     int n = barcount(mon);
-    int x0 = START_W + INST_W + WIFI_W + CLOSE_W;
+    int x0 = START_W + INST_W + WIFI_W + SETTINGS_W + CLOSE_W;
     int x1 = mon->w - CLOCK_W;
     int tw, i = 0;
 
@@ -744,8 +883,14 @@ barclock(Monitor *mon)
 
     tmnow = time(NULL);
     tm = localtime(&tmnow);
-    snprintf(buf, sizeof(buf), "%02d:%02d %02d.%02d",
-             tm->tm_hour, tm->tm_min, tm->tm_mday, tm->tm_mon + 1);
+    if (opt_clock == 0)
+        snprintf(buf, sizeof(buf), "%02d:%02d", tm->tm_hour, tm->tm_min);
+    else if (opt_clock == 2)
+        snprintf(buf, sizeof(buf), "%02d:%02d:%02d", tm->tm_hour, tm->tm_min,
+                 tm->tm_sec);
+    else
+        snprintf(buf, sizeof(buf), "%02d:%02d %02d.%02d",
+                 tm->tm_hour, tm->tm_min, tm->tm_mday, tm->tm_mon + 1);
     w = bartextwidth(buf, (int)strlen(buf));
     bardrawtext(mon, mon->w - w - PADDING_X, barh - PADDING_Y, buf, (int)strlen(buf));
 }
@@ -761,13 +906,16 @@ drawbar(Monitor *mon)
     barbutton(mon, 0, START_W, 0, 1);              /* Пуск → меню приложений */
     barbutton(mon, START_W, START_W + INST_W, 0, 2); /* установщик          */
     barbutton(mon, START_W + INST_W, START_W + INST_W + WIFI_W, 0, 3); /* Wi-Fi */
-    /* закрыть активное окно */
+    /* настройки */
     barbutton(mon, START_W + INST_W + WIFI_W,
-              START_W + INST_W + WIFI_W + CLOSE_W, 0, 4);
+              START_W + INST_W + WIFI_W + SETTINGS_W, 0, 5);
+    /* закрыть активное окно */
+    barbutton(mon, START_W + INST_W + WIFI_W + SETTINGS_W,
+              START_W + INST_W + WIFI_W + SETTINGS_W + CLOSE_W, 0, 4);
     /* тонкая вертикальная черта: отделяет кнопки от списка задач */
     XSetForeground(dpy, bargc, col_barline);
     XFillRectangle(dpy, mon->barwin, bargc,
-                   START_W + INST_W + WIFI_W + CLOSE_W - 12, 6, 1, barh - 12);
+                   START_W + INST_W + WIFI_W + SETTINGS_W + CLOSE_W - 12, 6, 1, barh - 12);
     bartasks(mon);
     barclock(mon);
     XFlush(dpy);
@@ -796,14 +944,18 @@ barclick(Monitor *mon, int x)
         spawn(&arg_wifi);
         return;
     }
-    if (x < START_W + INST_W + WIFI_W + CLOSE_W) {
+    if (x < START_W + INST_W + WIFI_W + SETTINGS_W) {
+        spawn(&arg_setup);
+        return;
+    }
+    if (x < START_W + INST_W + WIFI_W + SETTINGS_W + CLOSE_W) {
         killclient(NULL);
         return;
     }
     n = barcount(mon);
     if (!n)
         return;
-    x0 = START_W + INST_W + WIFI_W + CLOSE_W;
+    x0 = START_W + INST_W + WIFI_W + SETTINGS_W + CLOSE_W;
     x1 = mon->w - CLOCK_W;
     tw = (x1 - x0) / n;
     if (tw < 50)
@@ -1513,9 +1665,11 @@ run(void)
             case EnterNotify:       enternotify(&ev);      break;
             case Expose:            drawbars();            break;
             }
-        } else if (barvisible && time(NULL) - laststatus >= 1) {
+        } else if (time(NULL) - laststatus >= 1) {
             laststatus = time(NULL);
-            drawbars();
+            checkconfig();       /* тема и настройки применяются сразу */
+            if (barvisible)
+                drawbars();
         } else {
             pointercheck();
             usleep(8000);
@@ -1612,7 +1766,7 @@ pointercheck(void)
      * за любую точку и мешало выделять текст, двигать ползунки и таскать
      * файлы внутри приложений. Порог 8 px оставлен: обычный клик по кнопке
      * приложения окно не сдвинет. */
-    if (ry - c->y > DRAG_TOP)
+    if (ry - c->y > opt_dragtop)
         return;
     dragc = c;
     dragpx = rx;
@@ -1683,11 +1837,12 @@ setup(void)
     else
         fprintf(stderr, "lindu-wm: шрифт панели открыт (%s), высота %d\n",
                 FONT_XFT, barxft->height);
-    col_inact  = getcolor(INACTIVE);
-    col_bar    = getcolor(ACTIVE);
-    col_baract = getcolor(BARACT);
-    col_barline= getcolor(BARLINE);
-    col_bartxt = getcolor(ACCENT);
+    loadconfig();          /* цвета и параметры из theme.conf */
+    col_inact  = getcolor(cfg_bar);
+    col_bar    = col_inact;
+    col_baract = getcolor(cfg_act);
+    col_barline= getcolor(cfg_line);
+    col_bartxt = getcolor(cfg_text);
     bargc = XCreateGC(dpy, DefaultRootWindow(dpy), 0, NULL);
 
     /* обнаружение мониторов через Xinerama */
@@ -1714,6 +1869,7 @@ setup(void)
                  EnterWindowMask | KeyPressMask);
     grabkeys();
 
+    applybar();                 /* высота и видимость панели из настроек */
     for (m = monitors; m; m = m->next)
         if (barvisible)
             XMapRaised(dpy, m->barwin);
