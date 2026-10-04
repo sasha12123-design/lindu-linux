@@ -10,8 +10,12 @@
 
 set -u
 HOME_DIR="${HOME:-/root}"
+# Отбрасываем суффикс (-wayland, -x11, -session), чтобы получить корень имени
+# и звать соседние скрипты без зашитых имён.
 BASE=$(basename "$0")
-PREFIX=${BASE%-session}
+PREFIX=${BASE%-wayland}
+PREFIX=${PREFIX%-x11}
+PREFIX=${PREFIX%-session}
 HERE=$(dirname "$0")
 X11BIN="$HERE/$PREFIX-session-x11"
 CFG="$HOME_DIR/.config/sway/config"
@@ -59,13 +63,41 @@ if [ -x /usr/lib/polkit-gnome/polkit-gnome-authentication-agent-1 ]; then
     /usr/lib/polkit-gnome/polkit-gnome-authentication-agent-1 >/dev/null 2>&1 &
 fi
 
-# композитор
+# композитор. Его вывод пишем в отдельный файл: по нему поймаем плохой конфиг.
+SWAY_ERR="$XDG_RUNTIME_DIR/lindu-sway-start.log"
+BAD="$XDG_RUNTIME_DIR/lindu-sway-bad"
+rm -f "$BAD" 2>/dev/null
+: >"$SWAY_ERR"
+
 STARTED=$(date +%s)
-sway -c "$CFG" &
+sway -c "$CFG" >>"$SWAY_ERR" 2>&1 &
 SWAY_PID=$!
+
+# Если в конфиге есть ошибки, sway показывает красный экран и ЖДЁТ нажатия —
+# пользователь остаётся без рабочего стола. Поэтому через 12 секунд смотрим
+# журнал запуска: если sway жаловался на конфигурацию, закрываем его и
+# переходим в X11, чтобы человек попал в рабочее окружение.
+(
+    sleep 12
+    if [ -s "$SWAY_ERR" ] && grep -qiE "errors in your config|Error on line|Overwriting binding|requires binding|Unknown/invalid command" "$SWAY_ERR" 2>/dev/null; then
+        touch "$BAD"
+        pkill -x sway 2>/dev/null
+    fi
+) &
+WATCH_PID=$!
+
 wait "$SWAY_PID"
 RC=$?
 SPENT=$(( $(date +%s) - STARTED ))
+
+kill "$WATCH_PID" 2>/dev/null
+
+# конфиг оказался плохим — показываем почему и уходим в X11
+if [ -f "$BAD" ]; then
+    log "sway сообщил о проблемах с конфигурацией, ухожу в X11:"
+    while IFS= read -r line; do log "  $line"; done <"$SWAY_ERR" 2>/dev/null
+    exec "$X11BIN"
+fi
 
 # падение с ненулевым кодом почти сразу = отказ, а не выход пользователя
 if [ "$RC" -ne 0 ] && [ "$SPENT" -lt 120 ]; then

@@ -11,8 +11,12 @@
 set -u
 HOME_DIR="${HOME:-/root}"
 SESSION_FILE="$HOME_DIR/.config/lindu/session"
+# Отбрасываем суффикс (-wayland, -x11, -session), чтобы получить корень имени
+# и звать соседние скрипты без зашитых имён.
 BASE=$(basename "$0")
-PREFIX=${BASE%-session}
+PREFIX=${BASE%-wayland}
+PREFIX=${PREFIX%-x11}
+PREFIX=${PREFIX%-session}
 HERE=$(dirname "$0")
 DEFAULT_SESSION="wayland"
 

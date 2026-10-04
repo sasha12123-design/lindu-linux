@@ -93,7 +93,6 @@ bindsym $mod+Shift+v splitv
 bindsym $mod+r mode "resize"
 bindsym $mod+s splitv
 bindsym Escape mode "default"
-bindsym $mod+Return mode "default"
 
 # --- режим изменения размера окна клавишами ---
 mode "resize" {
