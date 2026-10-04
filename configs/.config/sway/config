@@ -81,19 +81,30 @@ bindsym $mod+Left focus left
 bindsym $mod+Down focus down
 bindsym $mod+Up focus up
 bindsym $mod+Right focus right
-bindsym $mod+Shift+Left move left
-bindsym $mod+Shift+Down move down
-bindsym $mod+Shift+Up move up
-bindsym $mod+Shift+Right move right
+bindsym $mod+Shift+Left move container to left
+bindsym $mod+Shift+Down move container to down
+bindsym $mod+Shift+Up move container to up
+bindsym $mod+Shift+Right move container to right
 bindsym $mod+f fullscreen
 bindsym $mod+space floating toggle
 bindsym $mod+Shift+space floating enable
 bindsym $mod+Shift+s splith
 bindsym $mod+Shift+v splitv
-bindsym $mod+Shift+Left move left
 bindsym $mod+r mode "resize"
-bindsym $mod+Shift+q mode "resize"
-bindsym Escape mode "resize"
+bindsym $mod+s splitv
+bindsym Escape mode "default"
+bindsym $mod+Return mode "default"
+
+# --- режим изменения размера окна клавишами ---
+mode "resize" {
+    bindsym Left resize shrink width 10px
+    bindsym Down resize grow height 10px
+    bindsym Up resize shrink height 10px
+    bindsym Right resize grow width 10px
+    bindsym Escape mode "default"
+    bindsym Return mode "default"
+}
+
 bindsym $mod+Shift+c kill
 bindsym $mod+Shift+r reload
 bindsym $mod+Shift+e exec swaymsg exit
