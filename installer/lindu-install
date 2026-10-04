@@ -287,6 +287,12 @@ install_lindu() {
     [ -f /usr/share/applications/lind""u-wifi.desktop ] && \
         install -D -m644 /usr/share/applications/lind""u-wifi.desktop \
             "$MOUNT/usr/share/applications/lind""u-wifi.desktop" || true
+    # программа настроек (кнопка-шестерёнка на панели)
+    [ -f /usr/local/bin/lind""u-settings ] && \
+        install -D -m755 /usr/local/bin/lind""u-settings "$MOUNT/usr/local/bin/lind""u-settings" || true
+    [ -f /usr/share/applications/lind""u-settings.desktop ] && \
+        install -D -m644 /usr/share/applications/lind""u-settings.desktop \
+            "$MOUNT/usr/share/applications/lind""u-settings.desktop" || true
     step "Установка среды lindu (WM + конфиги)"
     install -d "$MOUNT/usr/local/bin"
     if [ -f /usr/local/bin/lindu-wm ]; then
