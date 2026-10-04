@@ -21,6 +21,7 @@
 #define INST_W    46                 /* ширина кнопки установщика   */
 #define WIFI_W    46                 /* ширина кнопки Wi-Fi         */
 #define CLOSE_W   34                 /* ширина кнопки закрытия окна  */
+#define DRAG_TOP  84                 /* высота полосы для перетаскивания, px */
 #define CLOCK_W   170                /* запас под часы справа       */
 
 #define ACTIVE    "#1f387b"          /* фон панели (как таскбар Windows) */
