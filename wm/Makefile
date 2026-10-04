@@ -1,1 +1,39 @@
-UFJFRklYID89IC91c3IvbG9jYWwKREVTVERJUiA/PQoKQ0MgPz0gZ2NjCkNGTEFHUyA/PSAtTzIgLXN0ZD1jOTkgLVdhbGwgLVdleHRyYQpMREZMQUdTID89CgojINCX0LDQs9C+0LvQvtCy0LrQuCBYZnQg0L/QvtC00LrQu9GO0YfQsNGO0YIgPGZ0MmJ1aWxkLmg+LCDQsCDQsiBBcmNoIGZyZWV0eXBlMiDQu9C10LbQuNGCINCyCiMgL3Vzci9pbmNsdWRlL2ZyZWV0eXBlMiDigJQg0Y3RgtC+0YIg0L/Rg9GC0Ywg0L7QsdGP0LfQsNGC0LXQu9C10L0sINC40L3QsNGH0LUg0YHQsdC+0YDQutCwINC/0LDQtNCw0LXRgi4KUEtHQ09ORklHID89IHBrZy1jb25maWcKWEZUX0NGTEFHUyA9IC1JL3Vzci9pbmNsdWRlL2ZyZWV0eXBlMiAkKHNoZWxsICQoUEtHQ09ORklHKSAtLWNmbGFncyB4ZnQgMj4vZGV2L251bGwpClhGVF9MSUJTICAgPSAkKHNoZWxsICQoUEtHQ09ORklHKSAtLWxpYnMgeGZ0IDI+L2Rldi9udWxsIHx8IGVjaG8gLWxYZnQpCgpMSUJTID0gLWxYMTEgLWxYaW5lcmFtYSAkKFhGVF9MSUJTKQoKU1JDID0gbGluZHUtd20uYwpPQkogPSAkKFNSQzouYz0ubykKCmFsbDogbGluZHUtd20KCmxpbmR1LXdtOiAkKE9CSikKCSQoQ0MpICQoTERGTEFHUykgLW8gJEAgJChPQkopICQoTElCUykKCiQoT0JKKTogY29uZmlnLmgKCiUubzogJS5jCgkkKENDKSAkKENGTEFHUykgJChYRlRfQ0ZMQUdTKSAtYyAtbyAkQCAkPAoKaW5zdGFsbDogbGluZHUtd20KCWluc3RhbGwgLWQgJChERVNURElSKSQoUFJFRklYKS9iaW4KCWluc3RhbGwgLW0gMDc1NSBsaW5kdS13bSAkKERFU1RESVIpJChQUkVGSVgpL2Jpbi9saW5kdS13bQoKdW5pbnN0YWxsOgoJcm0gLWYgJChERVNURElSKSQoUFJFRklYKS9iaW4vbGluZHUtd20KCmNsZWFuOgoJcm0gLWYgbGluZHUtd20gKi5vCgouUEhPTlk6IGFsbCBpbnN0YWxsIHVuaW5zdGFsbCBjbGVhbg==
+PREFIX ?= /usr/local
+DESTDIR ?=
+
+CC ?= gcc
+CFLAGS ?= -O2 -std=c99 -Wall -Wextra
+LDFLAGS ?=
+
+# Заголовки Xft подключают <ft2build.h>, а в Arch freetype2 лежит в
+# /usr/include/freetype2 — этот путь обязателен, иначе сборка падает.
+PKGCONFIG ?= pkg-config
+XFT_CFLAGS = -I/usr/include/freetype2 $(shell $(PKGCONFIG) --cflags xft 2>/dev/null)
+XFT_LIBS   = $(shell $(PKGCONFIG) --libs xft 2>/dev/null || echo -lXft)
+
+LIBS = -lX11 -lXinerama $(XFT_LIBS)
+
+SRC = lindu-wm.c
+OBJ = $(SRC:.c=.o)
+
+all: lindu-wm
+
+lindu-wm: $(OBJ)
+	$(CC) $(LDFLAGS) -o $@ $(OBJ) $(LIBS)
+
+$(OBJ): config.h
+
+%.o: %.c
+	$(CC) $(CFLAGS) $(XFT_CFLAGS) -c -o $@ $<
+
+install: lindu-wm
+	install -d $(DESTDIR)$(PREFIX)/bin
+	install -m 0755 lindu-wm $(DESTDIR)$(PREFIX)/bin/lindu-wm
+
+uninstall:
+	rm -f $(DESTDIR)$(PREFIX)/bin/lindu-wm
+
+clean:
+	rm -f lindu-wm *.o
+
+.PHONY: all install uninstall clean

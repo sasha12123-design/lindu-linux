@@ -1,1 +1,72 @@
-LyogbGluZHUgbGludXgg4oCUINC+0YTQvtGA0LzQu9C10L3QuNC1INC/0LDQvdC10LvQuCB3YXliYXIgKFdheWxhbmQpLgogICDQptCy0LXRgtCwINC/0L7QtNGB0YLQsNCy0LvRj9C10YIg0L/RgNC+0LPRgNCw0LzQvNCwINC90LDRgdGC0YDQvtC10Lo6IH4vLmNvbmZpZy9saW5kdS90aGVtZS5jb25mICovCgoqIHsKICAgIGZvbnQtZmFtaWx5OiAiRGVqYVZ1IFNhbnMiOwogICAgZm9udC1zaXplOiAxMnB4OwogICAgbWluLWhlaWdodDogMDsKICAgIGJvcmRlcjogbm9uZTsKICAgIGJvcmRlci1yYWRpdXM6IDA7Cn0KCndpbmRvdyN3YXliYXIgewogICAgYmFja2dyb3VuZC1jb2xvcjoge2Jhcn07CiAgICBjb2xvcjoge3RleHR9Owp9CgojY3VzdG9tLXN0YXJ0LAojY3VzdG9tLWluc3RhbGwsCiNjdXN0b20td2lmaSwKI2N1c3RvbS1zZXR0aW5ncywKI2N1c3RvbS1leGl0IHsKICAgIGJhY2tncm91bmQ6IHRyYW5zcGFyZW50OwogICAgY29sb3I6IHt0ZXh0fTsKICAgIHBhZGRpbmc6IDRweCAxMnB4OwogICAgbWFyZ2luOiA0cHggMnB4OwogICAgYm9yZGVyLXJhZGl1czogMTBweDsKICAgIG1pbi13aWR0aDogMTRweDsKICAgIHRyYW5zaXRpb246IGJhY2tncm91bmQtY29sb3IgMTQwbXMgZWFzZSwgY29sb3IgMTQwbXMgZWFzZTsKfQoKI2N1c3RvbS1zdGFydDpob3ZlciwKI2N1c3RvbS1pbnN0YWxsOmhvdmVyLAojY3VzdG9tLXdpZmk6aG92ZXIsCiNjdXN0b20tc2V0dGluZ3M6aG92ZXIsCiNjdXN0b20tZXhpdDpob3ZlciB7CiAgICBiYWNrZ3JvdW5kLWNvbG9yOiB7YWN0fTsKICAgIGNvbG9yOiB7bGluZX07Cn0KCiNjdXN0b20tZXhpdDpob3ZlciB7CiAgICBjb2xvcjogI2ZmN2E3YTsKfQoKI3dpbmRvdyB7CiAgICBiYWNrZ3JvdW5kOiB0cmFuc3BhcmVudDsKICAgIGNvbG9yOiB7dGV4dH07CiAgICBwYWRkaW5nOiAwIDhweDsKICAgIG1hcmdpbjogNHB4IDA7CiAgICBib3JkZXItcmFkaXVzOiA4cHg7CiAgICB0cmFuc2l0aW9uOiBiYWNrZ3JvdW5kLWNvbG9yIDE0MG1zIGVhc2U7Cn0KCiN3aW5kb3cuZm9jdXNlZCB7CiAgICBiYWNrZ3JvdW5kLWNvbG9yOiB7YWN0fTsKICAgIGNvbG9yOiB7bGluZX07Cn0KCiN3aW5kb3cudXJnZW50IHsKICAgIGNvbG9yOiAjZmY3YTdhOwp9CgojdHJheSwKI2Nsb2NrIHsKICAgIGJhY2tncm91bmQ6IHRyYW5zcGFyZW50OwogICAgY29sb3I6IHt0ZXh0fTsKICAgIHBhZGRpbmc6IDAgMTBweDsKICAgIG1hcmdpbjogNHB4IDA7Cn0KCiNjbG9jayB7CiAgICBjb2xvcjoge2xpbmV9Owp9
+/* lindu linux — оформление панели waybar (Wayland).
+   Цвета подставляет программа настроек: ~/.config/lindu/theme.conf */
+
+* {
+    font-family: "DejaVu Sans";
+    font-size: 12px;
+    min-height: 0;
+    border: none;
+    border-radius: 0;
+}
+
+window#waybar {
+    background-color: {bar};
+    color: {text};
+}
+
+#custom-start,
+#custom-install,
+#custom-wifi,
+#custom-settings,
+#custom-exit {
+    background: transparent;
+    color: {text};
+    padding: 4px 12px;
+    margin: 4px 2px;
+    border-radius: 10px;
+    min-width: 14px;
+    transition: background-color 140ms ease, color 140ms ease;
+}
+
+#custom-start:hover,
+#custom-install:hover,
+#custom-wifi:hover,
+#custom-settings:hover,
+#custom-exit:hover {
+    background-color: {act};
+    color: {line};
+}
+
+#custom-exit:hover {
+    color: #ff7a7a;
+}
+
+#window {
+    background: transparent;
+    color: {text};
+    padding: 0 8px;
+    margin: 4px 0;
+    border-radius: 8px;
+    transition: background-color 140ms ease;
+}
+
+#window.focused {
+    background-color: {act};
+    color: {line};
+}
+
+#window.urgent {
+    color: #ff7a7a;
+}
+
+#tray,
+#clock {
+    background: transparent;
+    color: {text};
+    padding: 0 10px;
+    margin: 4px 0;
+}
+
+#clock {
+    color: {line};
+}

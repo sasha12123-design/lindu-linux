@@ -1,1 +1,57 @@
-Ly8gbGluZHUgbGludXgg4oCUINC/0LDQvdC10LvRjCB3YXliYXIgKNGB0LXRgdGB0LjRjyBXYXlsYW5kKQovLyDQntGE0L7RgNC80LvQtdC90LjQtSDRhtCy0LXRgtC+0LIg0LfQsNC00LDRkdGCINC/0YDQvtCz0YDQsNC80LzQsCDQvdCw0YHRgtGA0L7QtdC6OiB+Ly5jb25maWcvbGluZHUvdGhlbWUuY29uZgp7CiAgICAibGF5ZXIiOiAidG9wIiwKICAgICJwb3NpdGlvbiI6ICJib3R0b20iLAogICAgImhlaWdodCI6IDM0LAogICAgInNwYWNpbmciOiA2LAogICAgInJlbG9hZF9pbnRlcnZhbCI6IDEwLAoKICAgICJtb2R1bGVzLWxlZnQiOiBbImN1c3RvbS9zdGFydCIsICJjdXN0b20vaW5zdGFsbCIsICJjdXN0b20vd2lmaSIsICJjdXN0b20vc2V0dGluZ3MiLCAid2luZG93Il0sCiAgICAibW9kdWxlcy1jZW50ZXIiOiBbXSwKICAgICJtb2R1bGVzLXJpZ2h0IjogWyJ0cmF5IiwgImNsb2NrIiwgImN1c3RvbS9leGl0Il0sCgogICAgImN1c3RvbS9zdGFydCI6IHsKICAgICAgICAiZm9ybWF0IjogIuKYsCDQn9Cj0KHQmiIsCiAgICAgICAgIm9uLWNsaWNrIjogInJvZmkgLXNob3cgZHJ1biAtaSIsCiAgICAgICAgInRvb2x0aXAiOiB0cnVlCiAgICB9LAogICAgImN1c3RvbS9pbnN0YWxsIjogewogICAgICAgICJmb3JtYXQiOiAi4qyHINCj0KHQotCQ0J3QntCS0JrQkCIsCiAgICAgICAgIm9uLWNsaWNrIjogInBrZXhlYyAvdXNyL2xvY2FsL2Jpbi9saW5kdS1pbnN0YWxsLWd0ayIsCiAgICAgICAgInRvb2x0aXAiOiB0cnVlCiAgICB9LAogICAgImN1c3RvbS93aWZpIjogewogICAgICAgICJmb3JtYXQiOiAi4oepINCh0JXQotCYIiwKICAgICAgICAib24tY2xpY2siOiAiL3Vzci9sb2NhbC9iaW4vbGluZHUtd2lmaSIsCiAgICAgICAgInRvb2x0aXAiOiB0cnVlCiAgICB9LAogICAgImN1c3RvbS9zZXR0aW5ncyI6IHsKICAgICAgICAiZm9ybWF0IjogIuKamSDQndCQ0KHQotCg0J7QmdCa0JgiLAogICAgICAgICJvbi1jbGljayI6ICJsaW5kdS1zZXR0aW5ncyIsCiAgICAgICAgInRvb2x0aXAiOiB0cnVlCiAgICB9LAogICAgImN1c3RvbS9leGl0IjogewogICAgICAgICJmb3JtYXQiOiAi4o+7IiwKICAgICAgICAib24tY2xpY2siOiAic3dheW1zZyBleGl0IiwKICAgICAgICAidG9vbHRpcCI6IHRydWUKICAgIH0sCgogICAgIndpbmRvdyI6IHsKICAgICAgICAiZm9ybWF0IjogInt0aXRsZX0iLAogICAgICAgICJtYXgtbGVuZ3RoIjogNDIsCiAgICAgICAgInNlcGFyYXRlLWJsb2NrcyI6IGZhbHNlLAogICAgICAgICJzb3J0LWJ5IjogImZvY3VzIiwKICAgICAgICAiaWdub3JlLXdvcmtzcGFjZSI6IGZhbHNlCiAgICB9LAoKICAgICJ0cmF5IjogewogICAgICAgICJpY29uLXNpemUiOiAxNiwKICAgICAgICAic3BhY2luZyI6IDgKICAgIH0sCgogICAgImNsb2NrIjogewogICAgICAgICJmb3JtYXQiOiAiezolYSAlZCAlYiAgJUg6JU19IiwKICAgICAgICAidG9vbHRpcC1mb3JtYXQiOiAiPGJpZz57OiVBLCAlZCAlQiAlWX08L2JpZz48YnI+PHNwYW4gY29sb3I9JyM3ZmQ0ZjAnPns6JUg6JU19PC9zcGFuPiIKICAgIH0KfQ==
+// lindu linux — панель waybar (сессия Wayland)
+// Оформление цветов задаёт программа настроек: ~/.config/lindu/theme.conf
+{
+    "layer": "top",
+    "position": "bottom",
+    "height": 34,
+    "spacing": 6,
+    "reload_interval": 10,
+
+    "modules-left": ["custom/start", "custom/install", "custom/wifi", "custom/settings", "window"],
+    "modules-center": [],
+    "modules-right": ["tray", "clock", "custom/exit"],
+
+    "custom/start": {
+        "format": "☰ ПУСК",
+        "on-click": "rofi -show drun -i",
+        "tooltip": true
+    },
+    "custom/install": {
+        "format": "⬇ УСТАНОВКА",
+        "on-click": "pkexec /usr/local/bin/lindu-install-gtk",
+        "tooltip": true
+    },
+    "custom/wifi": {
+        "format": "⇩ СЕТИ",
+        "on-click": "/usr/local/bin/lindu-wifi",
+        "tooltip": true
+    },
+    "custom/settings": {
+        "format": "⚙ НАСТРОЙКИ",
+        "on-click": "lindu-settings",
+        "tooltip": true
+    },
+    "custom/exit": {
+        "format": "⏻",
+        "on-click": "swaymsg exit",
+        "tooltip": true
+    },
+
+    "window": {
+        "format": "{title}",
+        "max-length": 42,
+        "separate-blocks": false,
+        "sort-by": "focus",
+        "ignore-workspace": false
+    },
+
+    "tray": {
+        "icon-size": 16,
+        "spacing": 8
+    },
+
+    "clock": {
+        "format": "{:%a %d %b  %H:%M}",
+        "tooltip-format": "<big>{:%A, %d %B %Y}</big><br><span color='#7fd4f0'>{:%H:%M}</span>"
+    }
+}

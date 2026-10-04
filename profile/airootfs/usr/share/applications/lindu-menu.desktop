@@ -1,1 +1,13 @@
-W0Rlc2t0b3AgRW50cnldClR5cGU9QXBwbGljYXRpb24KVmVyc2lvbj0xLjAKTmFtZT1TdGFydCBNZW51CkdlbmVyaWNOYW1lPUFwcGxpY2F0aW9uIG1lbnUKR2VuZXJpY05hbWVbcnVdPdCh0YLQsNGA0YLQvtCy0L7QtSDQvNC10L3RjgpDb21tZW50PU9wZW4gdGhlIGFwcGxpY2F0aW9uIG1lbnUKQ29tbWVudFtydV090J7RgtC60YDRi9GC0Ywg0LzQtdC90Y4g0L/RgNC40LvQvtC20LXQvdC40LkKRXhlYz1yb2ZpIC1zaG93IGRydW4KSWNvbj0vdXNyL3NoYXJlL2xpbmR1L2ljb25zL21lbnUucG5nClRlcm1pbmFsPWZhbHNlCkNhdGVnb3JpZXM9U3lzdGVtO1V0aWxpdHk7Ck5vRGlzcGxheT1mYWxzZQ==
+[Desktop Entry]
+Type=Application
+Version=1.0
+Name=Start Menu
+GenericName=Application menu
+GenericName[ru]=Стартовое меню
+Comment=Open the application menu
+Comment[ru]=Открыть меню приложений
+Exec=rofi -show drun
+Icon=/usr/share/lindu/icons/menu.png
+Terminal=false
+Categories=System;Utility;
+NoDisplay=false

@@ -1,1 +1,139 @@
-IyBsaW5kdSBsaW51eCDigJQg0LrQvtC90YTQuNCz0YPRgNCw0YbQuNGPIFN3YXkgKNGB0LXRgdGB0LjRjyBXYXlsYW5kKQojCiMg0JrQu9Cw0LLQuNGI0Lgg0YLQtSDQttC1LCDRh9GC0L4g0LIg0YHQtdGB0YHQuNC4IFgxMToKIyAgIE1vZCA9INC60LvQsNCy0LjRiNCwIFdpbmRvd3MKIyAgIE1vZCtEICDQv9GA0L7Qs9GA0LDQvNC80YsgICAgICAgICBNb2QrVyAg0YHQtdGC0LggKFdpLUZpKQojICAgTW9kK0UgINGE0LDQudC70YsgICAgICAgICAgICAgTW9kK0VudGVyINGC0LXRgNC80LjQvdCw0LsKIyAgIE1vZCssICDQvdCw0YHRgtGA0L7QudC60LggICAgICAgICBNb2QrU2hpZnQrSSDRg9GB0YLQsNC90L7QstGJ0LjQugojICAgTW9kK0IgINC/0LDQvdC10LvRjCAgICAgICAgICAgIE1vZCtRICDQstGL0LnRgtC4INC40Lcg0YHQtdGB0YHQuNC4CiMgICBNb2QrU2hpZnQrQyDQt9Cw0LrRgNGL0YLRjCDQvtC60L3QviBNb2QrU2hpZnQrUiDQv9C10YDQtdGH0LjRgtCw0YLRjCDQvdCw0YHRgtGA0L7QudC60LgKIwojINCh0LjQvdGC0LDQutGB0LjRgSDRgdC+0L7RgtCy0LXRgtGB0YLQstGD0LXRgiBzd2F5IDEuMTEg0Lgg0L3QvtCy0LXQtSAo0YbQstC10YLQsCDQt9Cw0LTQsNGO0YLRgdGPINGH0LXRgNC10LcgY2xpZW50LiopLgoKc2V0ICRtb2QgTW9kNApzZXQgJHRlcm0gYWxhY3JpdHR5CnNldCAkbWVudSByb2ZpIC1zaG93IGRydW4gLWkKc2V0ICRmaWxlcyB0aHVuYXIKc2V0ICR3aWZpIC91c3IvbG9jYWwvYmluL2xpbmR1LXdpZmkKc2V0ICRzZXR1cCAvdXNyL2xvY2FsL2Jpbi9saW5keS1zZXR0aW5ncwpzZXQgJGluc3RhbGwgcGtleGVjIC91c3IvbG9jYWwvYmluL2xpbmR1LWluc3RhbGwtZ3RrCgojIC0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0g0LLQvdC10YjQvdC40Lkg0LLQuNC0CmRlZmF1bHRfYm9yZGVyIHBpeGVsIDIKZGVmYXVsdF9mbG9hdGluZ19ib3JkZXIgcGl4ZWwgMQpnYXBzIGlubmVyIDYKZ2FwcyBvdXRlciAyCmdhcHMgaG9yaXpvbnRhbCA2CmdhcHMgdmVydGljYWwgNAp0aXRsZWJhcl9ib3JkZXJfdGhpY2tuZXNzIDIKdGl0bGViYXJfcGFkZGluZyA4IDQKdGl0bGVfYWxpZ24gbGVmdApoaWRlX2VkZ2VfYm9yZGVycyAtLWkzIGJvdGgKZm9jdXNfZm9sbG93c19tb3VzZSB5ZXMKZm9jdXNfb25fd2luZG93X2FjdGl2YXRpb24gdXJnZW50Cm1vdXNlX3dhcnBpbmcgb3V0cHV0CmZvbnQgIkRlamFWdSBTYW5zIDEwIgpkZWZhdWx0X29yaWVudGF0aW9uIGhvcml6b250YWwKd29ya3NwYWNlX2xheW91dCBkZWZhdWx0Cnh3YXlsYW5kIGVuYWJsZQoKIyAtLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tINGG0LLQtdGC0LAgKNC/0LDQu9C40YLRgNCwIGxpbmR1KQpjbGllbnQuZm9jdXNlZCAgICAgICAgICAjN2ZkNGYwICMxYjIzNDAgI2ZmZmZmZgpjbGllbnQuZm9jdXNlZF9pbmFjdGl2ZSAjNmY4YWIwICMxYjIzNDAgI2U4ZWNmOApjbGllbnQudW5mb2N1c2VkICAgICAgICAjMmYzZjc1ICMxNjFjMzMgIzlhYTVjMgpjbGllbnQudXJnZW50ICAgICAgICAgICAjZmY3YTdhICMyYTFhMjAgI2ZmZmZmZiAjZmY3YTdhCmNsaWVudC5iYWNrZ3JvdW5kICAgICAgICMwYTBmMjIKCiMgLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLSDQutC70LDQstC40LDRgtGD0YDQsCDQuCDQvNGL0YjRjAppbnB1dCAqIHsKICAgIHhrYl9sYXlvdXQgInVzLHJ1IgogICAgeGtiX251bWxvY2sgZW5hYmxlZAogICAgcG9pbnRlcl9hY2NlbCAwLjAKICAgIGFjY2VsX3Byb2ZpbGUgZmxhdAp9CiMg0YDQsNGB0LrQu9Cw0LTQutC4INC/0LXRgNC10LrQu9GO0YfQsNGO0YLRgdGPINC60LvQsNCy0LjRiNC10LkgQ2Fwc0xvY2sg4oCUINC60LDQuiDQv9GA0LjQstGL0LrQu9C4INCyINGB0LXRgdGB0LjQuCBYMTEKYmluZHN5bSBDYXBzX0xvY2sgaW5wdXQgdHlwZTprZXlib2FyZCB4a2Jfc3dpdGNoX2xheW91dCBuZXh0CgojIC0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0g0YDQsNCx0L7Rh9C40LUg0L7QsdC70LDRgdGC0LgKd29ya3NwYWNlIDEKd29ya3NwYWNlIDIKd29ya3NwYWNlIDMKd29ya3NwYWNlIDQKd29ya3NwYWNlIDUKd29ya3NwYWNlIDYKYmluZHN5bSAkbW9kKzEgd29ya3NwYWNlIG51bWJlciAxCmJpbmRzeW0gJG1vZCsyIHdvcmtzcGFjZSBudW1iZXIgMgpiaW5kc3ltICRtb2QrMyB3b3Jrc3BhY2UgbnVtYmVyIDMKYmluZHN5bSAkbW9kKzQgd29ya3NwYWNlIG51bWJlciA0CmJpbmRzeW0gJG1vZCs1IHdvcmtzcGFjZSBudW1iZXIgNQpiaW5kc3ltICRtb2QrNiB3b3Jrc3BhY2UgbnVtYmVyIDYKYmluZHN5bSAkbW9kK1NoaWZ0KzEgbW92ZSBjb250YWluZXIgdG8gd29ya3NwYWNlIG51bWJlciAxCmJpbmRzeW0gJG1vZCtTaGlmdCsyIG1vdmUgY29udGFpbmVyIHRvIHdvcmtzcGFjZSBudW1iZXIgMgpiaW5kc3ltICRtb2QrU2hpZnQrMyBtb3ZlIGNvbnRhaW5lciB0byB3b3Jrc3BhY2UgbnVtYmVyIDMKYmluZHN5bSAkbW9kK1NoaWZ0KzQgbW92ZSBjb250YWluZXIgdG8gd29ya3NwYWNlIG51bWJlciA0CmJpbmRzeW0gJG1vZCtTaGlmdCs1IG1vdmUgY29udGFpbmVyIHRvIHdvcmtzcGFjZSBudW1iZXIgNQpiaW5kc3ltICRtb2QrU2hpZnQrNiBtb3ZlIGNvbnRhaW5lciB0byB3b3Jrc3BhY2UgbnVtYmVyIDYKYmluZHN5bSAkbW9kK2JyYWNrZXRsZWZ0IHdvcmtzcGFjZSBwcmV2CmJpbmRzeW0gJG1vZCticmFja2V0cmlnaHQgd29ya3NwYWNlIG5leHQKCiMgLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLSDQvtC60L3QsCDQuCDQvNGL0YjRjApiaW5kc3ltICRtb2QrTGVmdCBmb2N1cyBsZWZ0CmJpbmRzeW0gJG1vZCtEb3duIGZvY3VzIGRvd24KYmluZHN5bSAkbW9kK1VwIGZvY3VzIHVwCmJpbmRzeW0gJG1vZCtSaWdodCBmb2N1cyByaWdodApiaW5kc3ltICRtb2QrU2hpZnQrTGVmdCBtb3ZlIGxlZnQKYmluZHN5bSAkbW9kK1NoaWZ0K0Rvd24gbW92ZSBkb3duCmJpbmRzeW0gJG1vZCtTaGlmdCtVcCBtb3ZlIHVwCmJpbmRzeW0gJG1vZCtTaGlmdCtSaWdodCBtb3ZlIHJpZ2h0CmJpbmRzeW0gJG1vZCtmIGZ1bGxzY3JlZW4KYmluZHN5bSAkbW9kK3NwYWNlIGZsb2F0aW5nIHRvZ2dsZQpiaW5kc3ltICRtb2QrU2hpZnQrc3BhY2UgZmxvYXRpbmcgZW5hYmxlCmJpbmRzeW0gJG1vZCtTaGlmdCtzIHNwbGl0aApiaW5kc3ltICRtb2QrU2hpZnQrdiBzcGxpdHYKYmluZHN5bSAkbW9kK1NoaWZ0K0xlZnQgbW92ZSBsZWZ0CmJpbmRzeW0gJG1vZCtyIG1vZGUgInJlc2l6ZSIKYmluZHN5bSAkbW9kK1NoaWZ0K3EgbW9kZSAicmVzaXplIgpiaW5kc3ltIEVzY2FwZSBtb2RlICJyZXNpemUiCmJpbmRzeW0gJG1vZCtTaGlmdCtjIGtpbGwKYmluZHN5bSAkbW9kK1NoaWZ0K3IgcmVsb2FkCmJpbmRzeW0gJG1vZCtTaGlmdCtlIGV4ZWMgc3dheW1zZyBleGl0CgojIC0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0g0LfQsNC/0YPRgdC6INC/0YDQvtCz0YDQsNC80LwKIyDQn9Cw0L3QtdC70YwsINC+0LHQvtC4INC4INC/0L7RgNGC0LDQuyDQt9Cw0L/Rg9GB0LrQsNC10Lwg0LfQtNC10YHRjDog0YMg0L/QvtGC0L7QvNC60L7QsiBzd2F5INC10YHRgtGMIFdBWUxBTkRfRElTUExBWS4KIyBwa2lsbCDQv9C10YDQtdC0INGB0YLQsNGA0YLQvtC8IOKAlCDRh9GC0L7QsdGLINC/0LXRgNC10YfQuNGC0YvQstCw0L3QuNC1INC60L7QvdGE0LjQs9GD0YDQsNGG0LjQuCDQvdC1INC/0LvQvtC00LjQu9C+INC60L7Qv9C40LguCmV4ZWMgc2ggLWMgInBraWxsIC14IHdheWJhciA+L2Rldi9udWxsIDI+JjE7IHNsZWVwIDAuMzsgKHdheWJhciA+L2Rldi9udWxsIDI+JjEgJikiCmV4ZWMgc2ggLWMgInBraWxsIC14IHN3YXliZyA+L2Rldi9udWxsIDI+JjE7IHNsZWVwIDAuMzsgKHN3YXliZyAtbSBmaWxsIC1jICcjMGEwZjIyJyAvdXNyL3NoYXJlL2JhY2tncm91bmRzL2xpbmR5LnBuZyA+L2Rldi9udWxsIDI+JjEgJikiCmV4ZWMgc2ggLWMgInBraWxsIC1mIHhkZy1kZXNrdG9wLXBvcnRhbCA+L2Rldi9udWxsIDI+JjE7IHNsZWVwIDAuMzsgKHhkZy1kZXNrdG9wLXBvcnRhbCA+L2Rldi9udWxsIDI+JjEgJikiCgpiaW5kc3ltICRtb2QrUmV0dXJuIGV4ZWMgJHRlcm0KYmluZHN5bSAkbW9kK2QgZXhlYyAkbWVudQpiaW5kc3ltICRtb2QrdyBleGVjICR3aWZpCmJpbmRzeW0gJG1vZCtlIGV4ZWMgJGZpbGVzCmJpbmRzeW0gJG1vZCtjb21tYSBleGVjICRzZXR1cApiaW5kc3ltICRtb2QrU2hpZnQraSBleGVjICRpbnN0YWxsCmJpbmRzeW0gJG1vZCtxIGV4ZWMgc3dheW1zZyBleGl0CiMg0L/QsNC90LXQu9GMOiDRg9Cx0YDQsNGC0YwsINC10YHQu9C4INC90LDRgNC40YHQvtCy0LDQvdCwLCDQuNC90LDRh9C1INC/0L7QutCw0LfQsNGC0YwKYmluZHN5bSAkbW9kK2IgZXhlYyBzaCAtYyAicGtpbGwgLXggd2F5YmFyID4vZGV2L251bGwgMj4mMSB8fCAod2F5YmFyID4vZGV2L251bGwgMj4mMSAmKSIKIyDQsdGD0YTQtdGAINC+0LHQvNC10L3QsApiaW5kc3ltICRtb2QrYyBleGVjIHdsLWNvcHkKYmluZHN5bSAkbW9kK3YgZXhlYyB3bC1wYXN0ZQojINC30LLRg9C6CmJpbmRzeW0gWEY4NkF1ZGlvUmFpc2VWb2x1bWUgZXhlYyBwYWN0bCBzZXQtc2luay12b2x1bWUgQERFRkFVTFRfU0lOS0AgKzUlCmJpbmRzeW0gWEY4NkF1ZGlvTG93ZXJWb2x1bWUgZXhlYyBwYWN0bCBzZXQtc2luay12b2x1bWUgQERFRkFVTFRfU0lOS0AgLTUlCmJpbmRzeW0gWEY4NkF1ZGlvTXV0ZSBleGVjIHBhY3RsIHNldC1zaW5rLW11dGUgQERFRkFVTFRfU0lOS0AgdG9nZ2xlCmJpbmRzeW0gWEY4NkF1ZGlvTWljTXV0ZSBleGVjIHBhY3RsIHNldC1zb3VyY2UtbXV0ZSBAREVGQVVMVF9BTFNBX1NPVVJDRUAgdG9nZ2xlCiMg0Y/RgNC60L7RgdGC0YwKYmluZHN5bSBYRjg2TW9uQnJpZ2h0bmVzc1VwIGV4ZWMgYnJpZ2h0bmVzc2N0bCBzZXQgKzUlCmJpbmRzeW0gWEY4Nk1vbkJyaWdodG5lc3NEb3duIGV4ZWMgYnJpZ2h0bmVzc2N0bCBzZXQgLTUlCgojIC0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0g0L7QutC90LAg0LHQtdC3INC/0LvQuNGC0LrQuApmb3Jfd2luZG93IFthcHBfaWQ9InRodW5hciJdIGZsb2F0aW5nIGVuYWJsZQpmb3Jfd2luZG93IFthcHBfaWQ9Im5tLWNvbm5lY3Rpb24tZWRpdG9yIl0gZmxvYXRpbmcgZW5hYmxlCmZvcl93aW5kb3cgW2FwcF9pZD0icGF2dWNvbnRyb2wiXSBmbG9hdGluZyBlbmFibGUKZm9yX3dpbmRvdyBbd2luZG93X3JvbGU9InBvcC11cCJdIGZsb2F0aW5nIGVuYWJsZQpmb3Jfd2luZG93IFt3aW5kb3dfcm9sZT0iZGlhbG9nIl0gZmxvYXRpbmcgZW5hYmxlCmZvcl93aW5kb3cgW3dpbmRvd19yb2xlPSJmaWxlLWNob29zZXIiXSBmbG9hdGluZyBlbmFibGUKCiMgLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLSDQv9C40YLQsNC90LjQtQpiaW5kc3ltICRtb2QrU2hpZnQrRGVsZXRlIGV4ZWMgc3lzdGVtY3RsIHBvd2Vyb2ZmCmJpbmRzeW0gJG1vZCtTaGlmdCtCYWNrU3BhY2UgZXhlYyBzeXN0ZW1jdGwgcmVib290
+# lindu linux — конфигурация Sway (сессия Wayland)
+#
+# Клавиши те же, что в сессии X11:
+#   Mod = клавиша Windows
+#   Mod+D  программы         Mod+W  сети (Wi-Fi)
+#   Mod+E  файлы             Mod+Enter терминал
+#   Mod+,  настройки         Mod+Shift+I установщик
+#   Mod+B  панель            Mod+Q  выйти из сессии
+#   Mod+Shift+C закрыть окно Mod+Shift+R перечитать настройки
+#
+# Синтаксис соответствует sway 1.11 и новее (цвета задаются через client.*).
+
+set $mod Mod4
+set $term alacritty
+set $menu rofi -show drun -i
+set $files thunar
+set $wifi /usr/local/bin/lindu-wifi
+set $setup /usr/local/bin/lindy-settings
+set $install pkexec /usr/local/bin/lindu-install-gtk
+
+# ------------------------------------------------------------- внешний вид
+default_border pixel 2
+default_floating_border pixel 1
+gaps inner 6
+gaps outer 2
+gaps horizontal 6
+gaps vertical 4
+titlebar_border_thickness 2
+titlebar_padding 8 4
+title_align left
+hide_edge_borders --i3 both
+focus_follows_mouse yes
+focus_on_window_activation urgent
+mouse_warping output
+font "DejaVu Sans 10"
+default_orientation horizontal
+workspace_layout default
+xwayland enable
+
+# ------------------------------------------------------------- цвета (палитра lindu)
+client.focused          #7fd4f0 #1b2340 #ffffff
+client.focused_inactive #6f8ab0 #1b2340 #e8ecf8
+client.unfocused        #2f3f75 #161c33 #9aa5c2
+client.urgent           #ff7a7a #2a1a20 #ffffff #ff7a7a
+client.background       #0a0f22
+
+# ------------------------------------------------------------- клавиатура и мышь
+input * {
+    xkb_layout "us,ru"
+    xkb_numlock enabled
+    pointer_accel 0.0
+    accel_profile flat
+}
+# раскладки переключаются клавишей CapsLock — как привыкли в сессии X11
+bindsym Caps_Lock input type:keyboard xkb_switch_layout next
+
+# ------------------------------------------------------------- рабочие области
+workspace 1
+workspace 2
+workspace 3
+workspace 4
+workspace 5
+workspace 6
+bindsym $mod+1 workspace number 1
+bindsym $mod+2 workspace number 2
+bindsym $mod+3 workspace number 3
+bindsym $mod+4 workspace number 4
+bindsym $mod+5 workspace number 5
+bindsym $mod+6 workspace number 6
+bindsym $mod+Shift+1 move container to workspace number 1
+bindsym $mod+Shift+2 move container to workspace number 2
+bindsym $mod+Shift+3 move container to workspace number 3
+bindsym $mod+Shift+4 move container to workspace number 4
+bindsym $mod+Shift+5 move container to workspace number 5
+bindsym $mod+Shift+6 move container to workspace number 6
+bindsym $mod+bracketleft workspace prev
+bindsym $mod+bracketright workspace next
+
+# ------------------------------------------------------------- окна и мышь
+bindsym $mod+Left focus left
+bindsym $mod+Down focus down
+bindsym $mod+Up focus up
+bindsym $mod+Right focus right
+bindsym $mod+Shift+Left move left
+bindsym $mod+Shift+Down move down
+bindsym $mod+Shift+Up move up
+bindsym $mod+Shift+Right move right
+bindsym $mod+f fullscreen
+bindsym $mod+space floating toggle
+bindsym $mod+Shift+space floating enable
+bindsym $mod+Shift+s splith
+bindsym $mod+Shift+v splitv
+bindsym $mod+Shift+Left move left
+bindsym $mod+r mode "resize"
+bindsym $mod+Shift+q mode "resize"
+bindsym Escape mode "resize"
+bindsym $mod+Shift+c kill
+bindsym $mod+Shift+r reload
+bindsym $mod+Shift+e exec swaymsg exit
+
+# ------------------------------------------------------------- запуск программ
+# Панель, обои и портал запускаем здесь: у потомков sway есть WAYLAND_DISPLAY.
+# pkill перед стартом — чтобы перечитывание конфигурации не плодило копии.
+exec sh -c "pkill -x waybar >/dev/null 2>&1; sleep 0.3; (waybar >/dev/null 2>&1 &)"
+exec sh -c "pkill -x swaybg >/dev/null 2>&1; sleep 0.3; (swaybg -m fill -c '#0a0f22' /usr/share/backgrounds/lindy.png >/dev/null 2>&1 &)"
+exec sh -c "pkill -f xdg-desktop-portal >/dev/null 2>&1; sleep 0.3; (xdg-desktop-portal >/dev/null 2>&1 &)"
+
+bindsym $mod+Return exec $term
+bindsym $mod+d exec $menu
+bindsym $mod+w exec $wifi
+bindsym $mod+e exec $files
+bindsym $mod+comma exec $setup
+bindsym $mod+Shift+i exec $install
+bindsym $mod+q exec swaymsg exit
+# панель: убрать, если нарисована, иначе показать
+bindsym $mod+b exec sh -c "pkill -x waybar >/dev/null 2>&1 || (waybar >/dev/null 2>&1 &)"
+# буфер обмена
+bindsym $mod+c exec wl-copy
+bindsym $mod+v exec wl-paste
+# звук
+bindsym XF86AudioRaiseVolume exec pactl set-sink-volume @DEFAULT_SINK@ +5%
+bindsym XF86AudioLowerVolume exec pactl set-sink-volume @DEFAULT_SINK@ -5%
+bindsym XF86AudioMute exec pactl set-sink-mute @DEFAULT_SINK@ toggle
+bindsym XF86AudioMicMute exec pactl set-source-mute @DEFAULT_ALSA_SOURCE@ toggle
+# яркость
+bindsym XF86MonBrightnessUp exec brightnessctl set +5%
+bindsym XF86MonBrightnessDown exec brightnessctl set -5%
+
+# ------------------------------------------------------------- окна без плитки
+for_window [app_id="thunar"] floating enable
+for_window [app_id="nm-connection-editor"] floating enable
+for_window [app_id="pavucontrol"] floating enable
+for_window [window_role="pop-up"] floating enable
+for_window [window_role="dialog"] floating enable
+for_window [window_role="file-chooser"] floating enable
+
+# ------------------------------------------------------------- питание
+bindsym $mod+Shift+Delete exec systemctl poweroff
+bindsym $mod+Shift+BackSpace exec systemctl reboot

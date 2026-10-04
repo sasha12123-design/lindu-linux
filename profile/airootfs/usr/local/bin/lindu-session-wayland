@@ -1,1 +1,78 @@
-IyEvYmluL3NoCiMgbGluZHUgbGludXgg4oCUINGB0LXRgdGB0LjRjyBXYXlsYW5kIChTd2F5KS4KIwojINCh0LzRi9GB0Lsg0LbQuNC30L3QuCDRjdGC0L7Qs9C+INGB0LrRgNC40L/RgtCwIOKAlCDQvdC1INC00LDRgtGMINC/0L7Qu9GM0LfQvtCy0LDRgtC10LvRjiDQvtGB0YLQsNGC0YzRgdGPINGBINGH0ZHRgNC90YvQvAojINGN0LrRgNCw0L3QvtC8OiDQtdGB0LvQuCBzd2F5INC90LUg0YPRgdGC0LDQvdC+0LLQu9C10L0sINC10LPQviDQutC+0L3RhNC40LPRg9GA0LDRhtC40Y8g0L3QtSDQv9GA0L7RhdC+0LTQuNGCINC/0YDQvtCy0LXRgNC60YMKIyDQuNC70Lgg0LrQvtC80L/QvtC30LjRgtC+0YAg0L/QsNC00LDQtdGCINGB0YDQsNC30YMg0L/QvtGB0LvQtSDRgdGC0LDRgNGC0LAsINC80Ysg0LzQvtC70YfQsCDRg9GF0L7QtNC40Lwg0LIgWDExLdGB0LXRgdGB0LjRji4KIwojINCf0LDQvdC10LvRjCwg0L7QsdC+0Lgg0Lgg0L/QvtGA0YLQsNC7INC30LDQv9GD0YHQutCw0LXRgiDRgdCw0Lwgc3dheSAoZXhlYyDQsiDQtdCz0L4g0LrQvtC90YTQuNCz0YPRgNCw0YbQuNC4KTog0LjQvCDQvdGD0LbQtdC9CiMgV0FZTEFORF9ESVNQTEFZLCDQutC+0YLQvtGA0YvQuSDQtdGB0YLRjCDRgtC+0LvRjNC60L4g0YMg0LXQs9C+INC/0L7RgtC+0LzQutC+0LIuCgpzZXQgLXUKSE9NRV9ESVI9IiR7SE9NRTotL3Jvb3R9IgpCQVNFPSQoYmFzZW5hbWUgIiQwIikKUFJFRklYPSR7QkFTRSUtc2Vzc2lvbn0KSEVSRT0kKGRpcm5hbWUgIiQwIikKWDExQklOPSIkSEVSRS8kUFJFRklYLXNlc3Npb24teDExIgpDRkc9IiRIT01FX0RJUi8uY29uZmlnL3N3YXkvY29uZmlnIgpMT0c9IiRIT01FX0RJUi8ubGluZHUtc2Vzc2lvbi5sb2ciCgpsb2coKSB7CiAgICBwcmludGYgJyVzICVzXG4nICIkKGRhdGUgJyslSDolTTolUycpIiAiJCoiID4+IiRMT0ciIDI+L2Rldi9udWxsCiAgICBwcmludGYgJ1tsaW5keV0gJXNcbicgIiQqIgp9CgpleHBvcnQgWERHX0NVUlJFTlRfREVTS1RPUD1MSU5EVQpleHBvcnQgWERHX1NFU1NJT05fREVTS1RPUD1saW5kdWRlc2t0b3AKZXhwb3J0IFhER19TRVNTSU9OX1RZUEU9d2F5bGFuZApleHBvcnQgWERHX1NFQVQ9InNlYXQwIgoKIyDQutCw0YLQsNC70L7QsyDQtNC70Y8g0YHQvtC60LXRgtC+0LIg0Lgg0YTQsNC50LvQvtCyINGB0LXRgdGB0LjQuAppZiBbIC16ICIke1hER19SVU5USU1FX0RJUjotfSIgXTsgdGhlbgogICAgWERHX1JVTlRJTUVfRElSPSIvcnVuL3VzZXIvJChpZCAtdSkiCiAgICBleHBvcnQgWERHX1JVTlRJTUVfRElSCmZpCm1rZGlyIC1wICIkWERHX1JVTlRJTUVfRElSIiAyPi9kZXYvbnVsbApjaG1vZCA3MDAgIiRYREdfUlVOVElNRV9ESVIiIDI+L2Rldi9udWxsCgojIDEpINC60L7QvNC/0L7Qt9C40YLQvtGAINCy0L7QvtCx0YnQtSDQtdGB0YLRjD8KaWYgISBjb21tYW5kIC12IHN3YXkgPi9kZXYvbnVsbCAyPiYxOyB0aGVuCiAgICBsb2cgInN3YXkg0L3QtSDRg9GB0YLQsNC90L7QstC70LXQvSDigJQg0YPRhdC+0LbRgyDQsiBYMTEiCiAgICBleGVjICIkWDExQklOIgpmaQoKIyAyKSDQutC+0L3RhNC40LPRg9GA0LDRhtC40Y8g0LTQvtC70LbQvdCwINCx0YvRgtGMINCx0LXQtyDQvtGI0LjQsdC+0LogKNC40L3QsNGH0LUg0YfRkdGA0L3Ri9C5INGN0LrRgNCw0L0pCmlmIFsgLXIgIiRDRkciIF0gJiYgISBzd2F5IC0tdmFsaWRhdGUgLWMgIiRDRkciID4vdG1wL2xpbmR1LXN3YXktY2hlY2subG9nIDI+JjE7IHRoZW4KICAgIGxvZyAi0LrQvtC90YTQuNCz0YPRgNCw0YbQuNGPIHN3YXkg0L3QtSDQv9GA0L7RhdC+0LTQuNGCINC/0YDQvtCy0LXRgNC60YMg4oCUINGD0YXQvtC20YMg0LIgWDExIgogICAgd2hpbGUgSUZTPSByZWFkIC1yIGxpbmU7IGRvIGxvZyAiICAkbGluZSI7IGRvbmUgPC90bXAvbGluZHUtc3dheS1jaGVjay5sb2cgMj4vZGV2L251bGwKICAgIGV4ZWMgIiRYMTFCSU4iCmZpCgpsb2cgItC30LDQv9GD0YHQutCw0Y4g0YHQtdGB0YHQuNGOIFdheWxhbmQgKFN3YXkpIgoKIyDRgdC70YPQttCx0YssINC60L7RgtC+0YDRi9C8IFdheWxhbmQg0L3QtSDQvdGD0LbQtdC9ICjQt9Cy0YPQuiwg0L/QuNGC0LDQvdC40LUsINC/0LDQv9C60LgsINC/0YDQsNCy0LApCnBpcGV3aXJlID4vZGV2L251bGwgMj4mMSAmCnBpcGV3aXJlLXB1bHNlID4vZGV2L251bGwgMj4mMSAmCmFjcGlkID4vZGV2L251bGwgMj4mMSAmCnhkZy11c2VyLWRpcnMtdXBkYXRlID4vZGV2L251bGwgMj4mMSAmCmlmIFsgLXggL3Vzci9saWIvcG9sa2l0LWdub21lL3BvbGtpdC1nbm9tZS1hdXRoZW50aWNhdGlvbi1hZ2VudC0xIF07IHRoZW4KICAgIC91c3IvbGliL3BvbGtpdC1nbm9tZS9wb2xraXQtZ25vbWUtYXV0aGVudGljYXRpb24tYWdlbnQtMSA+L2Rldi9udWxsIDI+JjEgJgpmaQoKIyDQutC+0LzQv9C+0LfQuNGC0L7RgApTVEFSVEVEPSQoZGF0ZSArJXMpCnN3YXkgLWMgIiRDRkciICYKU1dBWV9QSUQ9JCEKd2FpdCAiJFNXQVlfUElEIgpSQz0kPwpTUEVOVD0kKCggJChkYXRlICslcykgLSBTVEFSVEVEICkpCgojINC/0LDQtNC10L3QuNC1INGBINC90LXQvdGD0LvQtdCy0YvQvCDQutC+0LTQvtC8INC/0L7Rh9GC0Lgg0YHRgNCw0LfRgyA9INC+0YLQutCw0LcsINCwINC90LUg0LLRi9GF0L7QtCDQv9C+0LvRjNC30L7QstCw0YLQtdC70Y8KaWYgWyAiJFJDIiAtbmUgMCBdICYmIFsgIiRTUEVOVCIgLWx0IDEyMCBdOyB0aGVuCiAgICBsb2cgInN3YXkg0LfQsNCy0LXRgNGI0LjQu9GB0Y8g0YfQtdGA0LXQtyAke1NQRU5UfdGBINGBINC60L7QtNC+0LwgJFJDIOKAlCDRjdGC0L4g0L7RgtC60LDQtywg0YPRhdC+0LbRgyDQsiBYMTEiCiAgICBleGVjICIkWDExQklOIgpmaQoKbG9nICLRgdC10YHRgdC40Y8gV2F5bGFuZCDQt9Cw0LLQtdGA0YjQtdC90LAgKNC60L7QtCAkUkMsICR7U1BFTlR90YEpIgpwa2lsbCAtUCAkJCAyPi9kZXYvbnVsbApleGl0IDA=
+#!/bin/sh
+# lindu linux — сессия Wayland (Sway).
+#
+# Смысл жизни этого скрипта — не дать пользователю остаться с чёрным
+# экраном: если sway не установлен, его конфигурация не проходит проверку
+# или композитор падает сразу после старта, мы молча уходим в X11-сессию.
+#
+# Панель, обои и портал запускает сам sway (exec в его конфигурации): им нужен
+# WAYLAND_DISPLAY, который есть только у его потомков.
+
+set -u
+HOME_DIR="${HOME:-/root}"
+BASE=$(basename "$0")
+PREFIX=${BASE%-session}
+HERE=$(dirname "$0")
+X11BIN="$HERE/$PREFIX-session-x11"
+CFG="$HOME_DIR/.config/sway/config"
+LOG="$HOME_DIR/.lindu-session.log"
+
+log() {
+    printf '%s %s\n' "$(date '+%H:%M:%S')" "$*" >>"$LOG" 2>/dev/null
+    printf '[lindy] %s\n' "$*"
+}
+
+export XDG_CURRENT_DESKTOP=LINDU
+export XDG_SESSION_DESKTOP=lindudesktop
+export XDG_SESSION_TYPE=wayland
+export XDG_SEAT="seat0"
+
+# каталог для сокетов и файлов сессии
+if [ -z "${XDG_RUNTIME_DIR:-}" ]; then
+    XDG_RUNTIME_DIR="/run/user/$(id -u)"
+    export XDG_RUNTIME_DIR
+fi
+mkdir -p "$XDG_RUNTIME_DIR" 2>/dev/null
+chmod 700 "$XDG_RUNTIME_DIR" 2>/dev/null
+
+# 1) композитор вообще есть?
+if ! command -v sway >/dev/null 2>&1; then
+    log "sway не установлен — ухожу в X11"
+    exec "$X11BIN"
+fi
+
+# 2) конфигурация должна быть без ошибок (иначе чёрный экран)
+if [ -r "$CFG" ] && ! sway --validate -c "$CFG" >/tmp/lindu-sway-check.log 2>&1; then
+    log "конфигурация sway не проходит проверку — ухожу в X11"
+    while IFS= read -r line; do log "  $line"; done </tmp/lindu-sway-check.log 2>/dev/null
+    exec "$X11BIN"
+fi
+
+log "запускаю сессию Wayland (Sway)"
+
+# службы, которым Wayland не нужен (звук, питание, папки, права)
+pipewire >/dev/null 2>&1 &
+pipewire-pulse >/dev/null 2>&1 &
+acpid >/dev/null 2>&1 &
+xdg-user-dirs-update >/dev/null 2>&1 &
+if [ -x /usr/lib/polkit-gnome/polkit-gnome-authentication-agent-1 ]; then
+    /usr/lib/polkit-gnome/polkit-gnome-authentication-agent-1 >/dev/null 2>&1 &
+fi
+
+# композитор
+STARTED=$(date +%s)
+sway -c "$CFG" &
+SWAY_PID=$!
+wait "$SWAY_PID"
+RC=$?
+SPENT=$(( $(date +%s) - STARTED ))
+
+# падение с ненулевым кодом почти сразу = отказ, а не выход пользователя
+if [ "$RC" -ne 0 ] && [ "$SPENT" -lt 120 ]; then
+    log "sway завершился через ${SPENT}с с кодом $RC — это отказ, ухожу в X11"
+    exec "$X11BIN"
+fi
+
+log "сессия Wayland завершена (код $RC, ${SPENT}с)"
+pkill -P $$ 2>/dev/null
+exit 0

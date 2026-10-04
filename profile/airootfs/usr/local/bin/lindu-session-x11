@@ -1,1 +1,17 @@
-IyEvYmluL3NoCiMgbGluZHUgbGludXgg4oCUINGB0LXRgdGB0LjRjyBYMTEgKNC+0LrQvtC90L3Ri9C5INC80LXQvdC10LTQttC10YAgbGluZHUtd20pLgojCiMg0JfQsNC/0LDRgdC90L7QuSDQstCw0YDQuNCw0L3Rgjog0LLQutC70Y7Rh9Cw0LXRgtGB0Y8g0LIg0L3QsNGB0YLRgNC+0LnQutCw0YUgKNGA0LDQt9C00LXQuyDCq9Ch0LjRgdGC0LXQvNCwwrsg4oaSINGB0LXRgdGB0LjRjyBYMTEpLgoKc2V0IC11CkhPTUVfRElSPSIke0hPTUU6LS9yb290fSIKTE9HPSIkSE9NRV9ESVIvLmxpbmR1LXNlc3Npb24ubG9nIgoKcHJpbnRmICclcyDQt9Cw0L/Rg9GB0Log0YHQtdGB0YHQuNC4IFgxMVxuJyAiJChkYXRlICcrJUg6JU06JVMnKSIgPj4iJExPRyIgMj4vZGV2L251bGwKcHJpbnRmICdbbGluZHldINGB0LXRgdGB0LjRjyBYMTFcbicKCiMg0LXRgdC70Lgg0LLQtNGA0YPQsyDQvtGB0YLQsNC70LDRgdGMINC/0LXRgNC10LzQtdC90L3QsNGPINC+0YIg0LTRgNGD0LPQvtC5INGB0LXRgdGB0LjQuCDigJQg0YPQsdGA0LDRgtGMCnVuc2V0IFdBWUxBTkRfRElTUExBWSAyPi9kZXYvbnVsbCB8fCB0cnVlCnVuc2V0IFhER19TRVNTSU9OX1RZUEUgMj4vZGV2L251bGwgfHwgdHJ1ZQoKZXhlYyBzdGFydHg=
+#!/bin/sh
+# lindu linux — сессия X11 (оконный менеджер lindu-wm).
+#
+# Запасной вариант: включается в настройках (раздел «Система» → сессия X11).
+
+set -u
+HOME_DIR="${HOME:-/root}"
+LOG="$HOME_DIR/.lindu-session.log"
+
+printf '%s запуск сессии X11\n' "$(date '+%H:%M:%S')" >>"$LOG" 2>/dev/null
+printf '[lindy] сессия X11\n'
+
+# если вдруг осталась переменная от другой сессии — убрать
+unset WAYLAND_DISPLAY 2>/dev/null || true
+unset XDG_SESSION_TYPE 2>/dev/null || true
+
+exec startx

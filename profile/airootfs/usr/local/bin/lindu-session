@@ -1,1 +1,36 @@
-IyEvYmluL3NoCiMgbGluZHUgbGludXgg4oCUINCy0YvQsdC+0YAg0LPRgNCw0YTQuNGH0LXRgdC60L7QuSDRgdC10YHRgdC40Lgg0L/RgNC4INCy0YXQvtC00LUuCiMKIyDQntGB0L3QvtCy0L3QsNGPINGB0LXRgdGB0LjRjyDigJQgV2F5bGFuZCAoU3dheSkuINCh0LXRgdGB0LjRjyBYMTEg0YEg0L3QsNGI0LjQvCDQvtC60L7QvdC90YvQvCDQvNC10L3QtdC00LbQtdGA0L7QvAojINC+0YHRgtCw0ZHRgtGB0Y8g0LfQsNC/0LDRgdC90L7QuTog0L/QtdGA0LXQutC70Y7Rh9Cw0LXRgtGB0Y8g0LIg0L/RgNC+0LPRgNCw0LzQvNC1INC90LDRgdGC0YDQvtC10LogKNGA0LDQt9C00LXQuyDCq9Ch0LjRgdGC0LXQvNCwwrspLgojCiMg0JLRi9Cx0L7RgCDRhdGA0LDQvdC40YLRgdGPINCyIH4vLmNvbmZpZy9saW5kdS9zZXNzaW9uOgojICAgICBzZXNzaW9uID0gd2F5bGFuZCAgICAg0L/QviDRg9C80L7Qu9GH0LDQvdC40Y4KIyAgICAgc2Vzc2lvbiA9IHgxMQoKc2V0IC11CkhPTUVfRElSPSIke0hPTUU6LS9yb290fSIKU0VTU0lPTl9GSUxFPSIkSE9NRV9ESVIvLmNvbmZpZy9saW5kdS9zZXNzaW9uIgpCQVNFPSQoYmFzZW5hbWUgIiQwIikKUFJFRklYPSR7QkFTRSUtc2Vzc2lvbn0KSEVSRT0kKGRpcm5hbWUgIiQwIikKREVGQVVMVF9TRVNTSU9OPSJ3YXlsYW5kIgoKbG9nKCkgeyBwcmludGYgJ1tsaW5keS1zZXNzaW9uXSAlc1xuJyAiJCoiOyB9CgpzZXNzaW9uPSIkREVGQVVMVF9TRVNTSU9OIgppZiBbIC1yICIkU0VTU0lPTl9GSUxFIiBdOyB0aGVuCiAgICB2PSQoc2VkIC1uICdzL15bWzpzcGFjZTpdXSpzZXNzaW9uW1s6c3BhY2U6XV0qPVtbOnNwYWNlOl1dKiJcP1woW2EtejAtOV0qXCkiXD9bWzpzcGFjZTpdXSokL1wxL3AnIFwKICAgICAgICAgICAgIiRTRVNTSU9OX0ZJTEUiIDI+L2Rldi9udWxsIHwgdGFpbCAtbiAxKQogICAgWyAtbiAiJHYiIF0gJiYgc2Vzc2lvbj0iJHYiCmZpCmxvZyAi0LLRi9Cx0YDQsNC90LAg0YHQtdGB0YHQuNGPOiAkc2Vzc2lvbiIKCmNhc2UgIiRzZXNzaW9uIiBpbgogICAgeDExfFgxMXxzdGFydHgpCiAgICAgICAgZXhlYyAiJEhFUkUvJFBSRUZJWC1zZXNzaW9uLXgxMSIKICAgICAgICA7OwogICAgKikKICAgICAgICBleGVjICIkSEVSRS8kUFJFRklYLXNlc3Npb24td2F5bGFuZCIKICAgICAgICA7Owplc2Fj
+#!/bin/sh
+# lindu linux — выбор графической сессии при входе.
+#
+# Основная сессия — Wayland (Sway). Сессия X11 с нашим оконным менеджером
+# остаётся запасной: переключается в программе настроек (раздел «Система»).
+#
+# Выбор хранится в ~/.config/lindu/session:
+#     session = wayland     по умолчанию
+#     session = x11
+
+set -u
+HOME_DIR="${HOME:-/root}"
+SESSION_FILE="$HOME_DIR/.config/lindu/session"
+BASE=$(basename "$0")
+PREFIX=${BASE%-session}
+HERE=$(dirname "$0")
+DEFAULT_SESSION="wayland"
+
+log() { printf '[lindy-session] %s\n' "$*"; }
+
+session="$DEFAULT_SESSION"
+if [ -r "$SESSION_FILE" ]; then
+    v=$(sed -n 's/^[[:space:]]*session[[:space:]]*=[[:space:]]*"\?\([a-z0-9]*\)"\?[[:space:]]*$/\1/p' \
+            "$SESSION_FILE" 2>/dev/null | tail -n 1)
+    [ -n "$v" ] && session="$v"
+fi
+log "выбрана сессия: $session"
+
+case "$session" in
+    x11|X11|startx)
+        exec "$HERE/$PREFIX-session-x11"
+        ;;
+    *)
+        exec "$HERE/$PREFIX-session-wayland"
+        ;;
+esac
