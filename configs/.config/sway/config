@@ -37,6 +37,10 @@ default_orientation horizontal
 workspace_layout default
 xwayland enable
 
+# Фон заливаем прямо здесь: даже если обои не запустятся, экран не будет
+# чёрным. output * работает для любого монитора без настройки разрешения.
+output * bg #0a0f22 solid_color
+
 # ------------------------------------------------------------- цвета (палитра lindu)
 client.focused          #7fd4f0 #1b2340 #ffffff
 client.focused_inactive #6f8ab0 #1b2340 #e8ecf8

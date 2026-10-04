@@ -70,8 +70,35 @@ rm -f "$BAD" 2>/dev/null
 : >"$SWAY_ERR"
 
 STARTED=$(date +%s)
-sway -c "$CFG" >>"$SWAY_ERR" 2>&1 &
-SWAY_PID=$!
+
+# Пробуем обычный рендеринг. Если окна не появились (частая история для
+# ноутбучных видеокарт: мышь работает, экран чёрный) — повторяем с
+# программным рендерингом, и только потом уходим в X11.
+sway_start() {
+    WLR_RENDERER="$1" sway -c "$CFG" >>"$SWAY_ERR" 2>&1 &
+    SWAY_PID=$!
+}
+
+# есть ли рабочие рабочие области: если их нет — рендерить нечего
+sway_alive() {
+    kill -0 "$SWAY_PID" 2>/dev/null || return 1
+    swaymsg -t get_workspaces 2>/dev/null | grep -q '"name"' && return 0
+    return 1
+}
+
+sway_start "${WLR_RENDERER:-auto}"
+sleep 8
+if ! sway_alive; then
+    log "sway запустился, но рабочие области не появились — пробую программный рендеринг"
+    pkill -x sway 2>/dev/null
+    sleep 2
+    sway_start pixman
+    sleep 8
+    if ! sway_alive; then
+        log "с программным рендерингом тоже нет результата — ухожу в X11"
+        touch "$BAD"
+    fi
+fi
 
 # Если в конфиге есть ошибки, sway показывает красный экран и ЖДЁТ нажатия —
 # пользователь остаётся без рабочего стола. Поэтому через 12 секунд смотрим
@@ -79,10 +106,18 @@ SWAY_PID=$!
 # переходим в X11, чтобы человек попал в рабочее окружение.
 (
     sleep 12
+    # плохой конфиг: sway показывает красный экран и ждёт — закрываем его
     if [ -s "$SWAY_ERR" ] && grep -qiE "errors in your config|Error on line|Overwriting binding|requires binding|Unknown/invalid command" "$SWAY_ERR" 2>/dev/null; then
         touch "$BAD"
         pkill -x sway 2>/dev/null
+        exit
     fi
+    # панель и обои должны жить: если процесс упал, поднимаем ещё раз
+    sleep 8
+    pgrep -x sway >/dev/null 2>&1 || exit
+    pgrep -x waybar >/dev/null 2>&1 || waybar >/dev/null 2>&1 &
+    pgrep -x swaybg >/dev/null 2>&1 || swaybg -m fill -c "#0a0f22" \
+        /usr/share/backgrounds/lindy.png >/dev/null 2>&1 &
 ) &
 WATCH_PID=$!
 
