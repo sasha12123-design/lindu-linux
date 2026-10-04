@@ -3,7 +3,7 @@
 """lindu-settings - настройки рабочего стола lindu linux.
 
 Разделы: оформление (темная/светлая/синяя), панель, окна, клавиатура,
-система. Все параметры применяются сразу: оконный менеджер следит за
+система. Все параметры применяются сразу: оконный менеджerc следит за
 файлом настроек и подхватывает изменения без перезапуска.
 """
 
@@ -106,13 +106,11 @@ configuration {{
     show-icons: true;
     icon-theme: "hicolor";
     drun-display-format: "{{name}}";
-    location: center;
-    anchor: center;
-    width: 60%;
+    width: 720px;
     lines: 14;
     border: 0;
     border-radius: 18px;
-    padding: 12px 16px;
+    padding: 12px;
     spacing: 10px;
     animations: "sway";
     animation-duration: 12;
@@ -130,14 +128,14 @@ configuration {{
 window {{
     background: {bar};
     border-radius: 18px;
-    padding: 12px 16px;
+    padding: 12px;
     spacing: 10px;
 }}
 
 inputbar {{
     background: {act};
     text-color: #ffffff;
-    padding: 8px 12px;
+    padding: 8px;
     spacing: 8px;
     border-radius: 12px;
 }}
@@ -147,7 +145,7 @@ text-input {{
     text-color: #ffffff;
     border: 0;
     border-radius: 12px;
-    padding: 6px 8px;
+    padding: 6px;
 }}
 
 element place-holder {{
@@ -159,7 +157,6 @@ listview {{
     lines: 14;
     spacing: 4px;
     scrollbar: false;
-    fixed-height: false;
     cycle: true;
     dynamic: true;
 }}
@@ -167,7 +164,7 @@ listview {{
 element {{
     background: transparent;
     text-color: {text};
-    padding: 8px 12px;
+    padding: 8px;
     spacing: 10px;
     border-radius: 10px;
 }}
@@ -185,7 +182,6 @@ element active {{
 element-icon {{
     size: 24px;
     vertical-align: 0.5;
-    padding: 0px;
 }}
 
 element-text {{
@@ -263,7 +259,7 @@ class Page(Gtk.Box):
         head = Gtk.Label(label=title)
         head.set_xalign(0.0)
         head.get_style_context().add_class("h2")
-        sub = Gtk.Label(label=subtitle)
+        sub = Gtk.Label(label=subtitle or "")
         sub.set_xalign(0.0)
         sub.set_line_wrap(True)
         sub.set_max_width_chars(70)
@@ -349,7 +345,10 @@ class SettingsWindow(Gtk.Window):
             lbl = Gtk.Label(label=title)
             lbl.set_xalign(0.0)
             box.pack_start(lbl, True, True, 0)
-            btn = Gtk.RadioButton.new_with_label(None, None)
+            if self.theme_btns:
+                btn = Gtk.RadioButton.new_from_widget(self.theme_btns[0][1])
+            else:
+                btn = Gtk.RadioButton()
             btn.set_active(key == current)
             box.pack_start(btn, False, False, 0)
             grid.attach(box, 0, 1 + idx, 1, 1)
@@ -544,6 +543,52 @@ class SettingsWindow(Gtk.Window):
         self.values = read_conf()
 
 
+def error_dialog(text):
+    """Показать ошибку вместе с трейсом и дать скопировать его в буфер обмена."""
+    try:
+        import gi
+        gi.require_version("Gdk", "3.0")
+        from gi.repository import Gdk
+    except Exception:
+        Gdk = None
+    tail = "\n".join(text.strip().splitlines()[-12:])
+    dlg = Gtk.MessageDialog(None, Gtk.DialogFlags.MODAL,
+                            Gtk.MessageType.ERROR, Gtk.ButtonsType.NONE,
+                            "lindu linux: ошибка")
+    dlg.set_default_size(760, 420)
+    dlg.format_secondary_text(
+        "Программа не смогла выполнить действие.\n"
+        "Подробности — в сообщении ниже и в файле ~/.lindu-settings.log.\n\n"
+        "%s" % tail)
+
+    box = dlg.get_content_area()
+    view = Gtk.TextView(editable=False, monospace=True)
+    view.set_wrap_mode(Gtk.WrapMode.CHAR)
+    buf = view.get_buffer()
+    buf.insert(buf.get_end_iter(), text)
+    sw = Gtk.ScrolledWindow()
+    sw.set_policy(Gtk.PolicyType.AUTOMATIC, Gtk.PolicyType.AUTOMATIC)
+    sw.set_min_content_height(220)
+    sw.add(view)
+    dlg.set_default_size(820, 560)
+    dlg.get_content_area().pack_start(sw, True, True, 0)
+    dlg.show_all()
+
+    def do_copy(w):
+        try:
+            Gtk.Clipboard.get(Gdk.SELECTION_CLIPBOARD).set_text(text, -1)
+            w.set_label("Скопировано")
+            w.set_sensitive(False)
+        except Exception as e:
+            dlg.format_secondary_text("Не удалось скопировать: %s" % e)
+
+    b = dlg.add_button("Скопировать отчёт", 1)
+    b.connect("clicked", do_copy)
+    dlg.add_button("Закрыть", Gtk.ResponseType.CLOSE)
+    dlg.run()
+    dlg.destroy()
+
+
 def main():
     try:
         win = SettingsWindow()
@@ -560,14 +605,9 @@ def main():
                 fh.write(text)
         except OSError:
             pass
-        last = text.strip().splitlines()[-1] if text.strip() else "неизвестная ошибка"
-        dlg = Gtk.MessageDialog(None, Gtk.DialogFlags.MODAL,
-                                Gtk.MessageType.ERROR, Gtk.ButtonsType.CLOSE,
-                                "Не удалось открыть настройки")
-        dlg.format_secondary_text("%s\n\nПодробности: ~/.lindu-settings.log" % last)
-        dlg.run()
-        dlg.destroy()
+        error_dialog(text)
 
 
 if __name__ == "__main__":
     main()
+
