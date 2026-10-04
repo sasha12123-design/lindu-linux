@@ -1,46 +1,106 @@
+/* lindu linux — оформление списков (программы, окна, сети).
+   Цвета подставляет программа настроек: ~/.config/lindu/theme.conf */
+
 configuration {
-  modi: "drun";
-  drun-display-format: "{name}";
-  show-icons: true;
-  display-columns: 1;
-  display-width: 45;
-  location: 0;
+    modi: "drun,window";
+    display-drun: "Программы";
+    display-window: "Окна";
+    drun-display-format: "{name}";
+    font: "DejaVu Sans 12";
+    show-icons: true;
+    icon-theme: "hicolor";
+    display-drun-icons: true;
+    display-window-icons: true;
+
+    /* окно списка можно таскать мышью */
+    window-dragging: enable;
+
+    /* анимация появления и исчезновения списка */
+    animations: "sway";
+    animation-duration: 12;
+
+    location: center;
+    anchor: center;
+    width: 60%;
+    lines: 14;
+    border: 0px;
+    border-radius: 18px;
+    background: #1b2340;
+    padding: 14px 18px;
+    spacing: 12px;
 }
 
+* {
+    background: transparent;
+    text-color: #e8ecf8;
+    margin: 0px;
+    padding: 0px;
+    border: 0px;
+}
+
+/* окно списка */
 window {
-  /* привязка по центру: иначе окно уезжает за левый край экрана */
-  location: center;
-  anchor: center;
-  width: 60%;
-  padding: 14px;
-  border: 2px;
-  border-radius: 8px;
-  background-color: rgba(11,14,18,0.96);
-  border-color: #79d7f0;
+    border: 0px;
+    border-radius: 18px;
+    background: #1b2340;
+    padding: 14px 18px;
+    spacing: 12px;
 }
 
+/* строка поиска и ввода пароля */
 inputbar {
-  background-color: transparent;
-  text-color: #d7e3ea;
-  font: "DejaVu Sans Mono 13";
+    background: #2f3f75;
+    text-color: #ffffff;
+    padding: 10px 14px;
+    spacing: 10px;
+    border-radius: 12px;
+}
+text-input {
+    background: #2f3f75;
+    text-color: #ffffff;
+    border: 0px;
+    border-radius: 12px;
+    padding: 8px 10px;
+}
+element place-holder {
+    text-color: #7fd4f0;
 }
 
+/* список */
 listview {
-  lines: 10;
-  columns: 1;
-  spacing: 4px;
-  padding: 8px;
-  background-color: transparent;
-  text-color: #d7e3ea;
+    background: transparent;
+    lines: 14;
+    spacing: 4px;
+    scrollbar: false;
+    fixed-height: false;
+    cycle: true;
+    dynamic: true;
 }
 
+/* строка списка */
 element {
-  padding: 6px;
-  background-color: transparent;
-  text-color: #d7e3ea;
+    background: transparent;
+    text-color: #e8ecf8;
+    padding: 10px 14px;
+    spacing: 14px;
+    border-radius: 12px;
+}
+element selected {
+    background: #2f3f75;
+    text-color: #7fd4f0;
+}
+element normal { }
+element urgent { }
+element active {
+    background: #2f3f75;
+    text-color: #ffffff;
 }
 
-element selected {
-  background-color: #1a2730;
-  text-color: #79d7f0;
+element-icon {
+    size: 26px;
+    vertical-align: 0.5;
+    padding: 0px 4px 0px 0px;
+}
+element-text {
+    vertical-align: 0.5;
 }
