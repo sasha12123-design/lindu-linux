@@ -10,7 +10,8 @@ say() { printf '%s\n' "$*"; }
 msg() {
     # сообщение пользователю: окном rofi, а без rofi — просто текстом
     if have_gui; then
-        printf '%s' "$1" | rofi -dmenu -p "lindu Wi-Fi" -i -width 60% -lines 6 >/dev/null 2>&1 || true
+        printf '%s' "$1" | rofi -dmenu -i -width 60% -lines 8 \
+            -p "Wi-Fi" >/dev/null 2>&1 || true
     else
         say "$1"
     fi
@@ -85,42 +86,57 @@ main() {
 
     local list cur
     cur="$(current_ssid)"
+    # строка списка: полоски <TAB> имя <TAB> защита <TAB> действие
     list="$(
-        printf '%s\n' "-- обновить список --"
+        printf '%s\t%s\t%s\t%s\n' "↻" "обновить список" "—" "Enter"
         if [ -n "$cur" ]; then
-            printf 'подключено: %s  (отключить)\n' "$cur"
+            printf '●\t%s\t%s\t%s\n' "$cur" "подключено" "отключить"
         fi
-        printf '%s\n' "-- подсказка (команды nmcli) --"
-        networks | awk -F"\t" '{printf "  %s  [%s%%]\n", $1, $2}'
+        printf '%s\t%s\t%s\t%s\n' "?" "подсказка" "—" "команды nmcli"
+        networks | awk -F"\t" -v cur="$cur" '{
+            n = int($2 / 25) + 1;
+            bars = "";
+            for (i = 0; i < 4; i++)
+                bars = bars (i < n ? "▆" : "▁");
+            lock = ($3 == "open" ? "открытая" : "защищённая");
+            mark = ($1 == cur ? "сейчас" : $2 "%");
+            printf "%s\t%s\t%s\t%s\n", bars, $1, lock, mark;
+        }'
     )"
 
-    local choice ssid pass sec
-    choice="$(printf '%s\n' "$list" | rofi -dmenu -p "lindu Wi-Fi — выберите сеть" -i -width 60% -lines 14)"
+    local choice ssid pass sec chosen_action chosen_sec
+    choice="$(printf '%s\n' "$list" | rofi -dmenu -i -width 60% -lines 14 \
+        -p "Wi-Fi" -mesg "выберите сеть  ·  Enter — подключиться  ·  Esc — отмена")"
     [ -n "$choice" ] || return 0
 
-    case "$choice" in
-        "-- обновить список --")
+    # разбираем выбранную строку по табуляции
+    chosen_action="$(printf '%s' "$choice" | cut -f4)"
+    chosen_sec="$(printf '%s' "$choice" | cut -f3)"
+    ssid="$(printf '%s' "$choice" | cut -f2)"
+
+    case "$ssid" in
+        "обновить список")
             main
             return $?
             ;;
-        "-- подсказка (команды nmcli) --")
+        "подсказка")
             msg "$(usage)"
-            return 0
-            ;;
-        *"(отключить)"*)
-            local old="${choice%%  (отключить)*}"
-            nm device disconnect "$old" >/dev/null 2>&1 &&
-                msg "Отключено: $old" || msg "Не удалось отключиться"
             return 0
             ;;
     esac
 
-    ssid="${choice# }"
-    ssid="${ssid%%  [*}"
-    ssid="${ssid## }"
+    if [ "$chosen_action" = "отключить" ]; then
+        nm device disconnect "$ssid" >/dev/null 2>&1 &&
+            msg "Отключено: $ssid" || msg "Не удалось отключиться"
+        return 0
+    fi
 
     # защита сети: пустая строка = открытая сеть
-    sec="$(networks | awk -F"\t" -v s="$ssid" '$1==s{print $3; exit}')"
+    if [ "$chosen_sec" = "открытая" ]; then
+        sec="open"
+    else
+        sec="$(networks | awk -F"\t" -v s="$ssid" '$1==s{print $3; exit}')"
+    fi
 
     if [ "$sec" = "open" ] || [ -z "$sec" ]; then
         if nm device wifi connect "$ssid" >/dev/null 2>&1; then
@@ -131,7 +147,8 @@ main() {
         return 1
     fi
 
-    pass="$(printf '' | rofi -dmenu -p "Пароль для $ssid" -password -i -width 420)"
+    pass="$(printf '' | rofi -dmenu -password -i -width 46% \
+        -p "Пароль" -mesg "сеть $ssid  ·  Esc — отмена")"
     [ -n "$pass" ] || { msg "Пароль не введён — отменено"; return 1; }
 
     if nm device wifi connect "$ssid" password "$pass" >/dev/null 2>&1; then
