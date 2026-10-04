@@ -72,6 +72,8 @@ static Key keys[] = {
     { MODKEY, XK_m,             setlayout,      {.ui = LT_MONOCLE} },
     { MODKEY, XK_x,             setlayout,      {.ui = LT_FLOAT} },
     { MODKEY, XK_b,             togglebar,      {0} },
+    /* настройки системы */
+    { MODKEY, XK_comma,        spawn,          SHCMD("/usr/local/bin/lind""u-settings") },
 
     /* фокус и перемещение */
     { MODKEY, XK_j,             focusnext,      {0} },
