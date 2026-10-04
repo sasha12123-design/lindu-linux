@@ -1,0 +1,437 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""lindu-settings - настройки рабочего стола lindu linux.
+
+Разделы: оформление (темная/светлая/синяя), панель, окна, клавиатура,
+система. Все параметры применяются сразу: оконный менеджер следит за
+файлом настроек и подхватывает изменения без перезапуска.
+"""
+
+import os
+import subprocess
+import sys
+
+import gi
+gi.require_version("Gtk", "3.0")
+from gi.repository import Gtk, Gdk, GLib  # noqa: E402
+
+HOME = os.path.expanduser("~")
+CONF_DIR = os.path.join(HOME, ".config", "lindu")
+CONF = os.path.join(CONF_DIR, "theme.conf")
+GTK3_DIR = os.path.join(HOME, ".config", "gtk-3.0")
+GTK3_INI = os.path.join(GTK3_DIR, "settings.ini")
+GTK4_INI = os.path.join(HOME, ".config", "gtk-4.0", "settings.ini")
+ROFI_DIR = os.path.join(HOME, ".config", "rofi")
+ROFI_CFG = os.path.join(ROFI_DIR, "config.rasi")
+LOG_FILE = os.path.join(HOME, ".lindu-wm.log")
+
+# ---------------------------------------------------------------- темы
+# bar - фон панели, text - текст, act - кнопки окон, line - акцент
+THEMES = [
+    ("dark", "Тёмная", "#1b2340", "#e8ecf8", "#2f3f75", "#7fd4f0", "Adwaita-dark"),
+    ("light", "Светлая", "#e8ecf5", "#1c2333", "#ffffff", "#2f6bd0", "Adwaita"),
+    ("blue", "Синяя (ночная)", "#102544", "#dfeaff", "#1b4a86", "#67e8f9", "Adwaita-dark"),
+]
+
+CLOCKS = [("Только время", 0), ("Время и дата", 1), ("Время с секундами", 2)]
+LAYOUTS = [("Только английская", "us"), ("Английская и русская", "us,ru")]
+
+DEFAULTS = {
+    "name": "dark",
+    "bar": "#1b2340",
+    "text": "#e8ecf8",
+    "act": "#2f3f75",
+    "line": "#7fd4f0",
+    "barh": 34,
+    "clock": 1,
+    "showbar": 1,
+    "dragtop": 84,
+    "master": 55,
+    "layout": "us,ru",
+}
+
+
+def read_conf():
+    values = dict(DEFAULTS)
+    try:
+        with open(CONF, encoding="utf-8") as fh:
+            for line in fh:
+                line = line.strip()
+                if not line or line.startswith("#") or "=" not in line:
+                    continue
+                key, _, val = line.partition("=")
+                values[key.strip()] = val.strip().strip('"')
+    except OSError:
+        pass
+    return values
+
+
+def write_conf(values):
+    os.makedirs(CONF_DIR, exist_ok=True)
+    order = ("name", "bar", "text", "act", "line", "barh", "clock",
+             "showbar", "dragtop", "master")
+    with open(CONF, "w", encoding="utf-8") as fh:
+        fh.write("# настройки рабочего стола lindu linux\n")
+        fh.write("# изменяется программой настроек, применяется сразу\n")
+        for key in order:
+            fh.write("%s = %s\n" % (key, values[key]))
+    os.chmod(CONF, 0o644)
+
+
+def apply_gtk_theme(theme):
+    """тема GTK: тёмная или светлая, для GTK3 и GTK4"""
+    name = theme
+    for path in (GTK3_INI, GTK4_INI):
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        with open(path, "w", encoding="utf-8") as fh:
+            fh.write("[Settings]\n")
+            fh.write("gtk-theme-name=%s\n" % name)
+            fh.write("gtk-application-prefer-dark-theme=%s\n"
+                     % ("1" if name.endswith("dark") else "0"))
+            fh.write("gtk-icon-theme-name=Adwaita\n")
+
+
+def apply_rofi(values):
+    """цвета списков rofi в тон панели"""
+    os.makedirs(ROFI_DIR, exist_ok=True)
+    body = """/* оформление списков в тон панели - меняется программой настроек */
+configuration {{
+    display-drun:  "программы";
+    modi:          "window,drun";
+    location:      center;
+    anchor:        center;
+    width:         60%;
+    lines:         14;
+    border:        0;
+    spacing:       4;
+    padding:       10;
+    background:    {bar};
+    text-color:    {text};
+    selected-normal: {act};
+    selected-text:  {line};
+    border-color:  {line};
+}}
+"""
+    body = body.format(**values)
+    with open(ROFI_CFG, "w", encoding="utf-8") as fh:
+        fh.write(body)
+
+
+def apply_keyboard(layout):
+    """раскладки: применяем сразу и записываем для следующих входов"""
+    args = ["setxkbmap", "-layout", layout]
+    if "," in layout:
+        args += ["-option", "grp:caps_toggle"]
+    else:
+        args += ["-option", ""]
+    subprocess.run(args, check=False)
+    d = os.path.join(HOME, ".config", "X11", "xorg.conf.d")
+    os.makedirs(d, exist_ok=True)
+    with open(os.path.join(d, "00-lindy-keyboard.conf"), "w",
+              encoding="utf-8") as fh:
+        fh.write('Section "InputClass"\n')
+        fh.write('\tIdentifier "lindy keyboard"\n')
+        fh.write('\tMatchIsKeyboard "on"\n')
+        if "," in layout:
+            fh.write('\tOption "XkbLayout" "%s"\n' % layout)
+            fh.write('\tOption "XkbOptions" "grp:caps_toggle"\n')
+        else:
+            fh.write('\tOption "XkbLayout" "%s"\n' % layout)
+
+
+class Page(Gtk.Box):
+    """общая основа страницы: заголовок, пояснение, поля"""
+
+    def __init__(self, title, subtitle):
+        super().__init__(orientation=Gtk.Orientation.VERTICAL, spacing=14)
+        self.set_border_width(20)
+        head = Gtk.Label(label=title)
+        head.set_xalign(0.0)
+        head.get_style_context().add_class("h2")
+        sub = Gtk.Label(label=subtitle)
+        sub.set_xalign(0.0)
+        sub.set_line_wrap(True)
+        sub.set_max_width_chars(70)
+        self.pack_start(head, False, False, 0)
+        self.pack_start(sub, False, False, 0)
+
+
+class SettingsWindow(Gtk.Window):
+    def __init__(self):
+        super().__init__(title="Настройки — lindu linux")
+        self.set_default_size(760, 620)
+        self.values = read_conf()
+        self.set_border_width(0)
+
+        outer = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=0)
+        self.add(outer)
+
+        # ---------- боковое меню разделов ----------
+        side = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2)
+        side.set_size_request(210, -1)
+        side.set_border_width(12)
+        outer.pack_start(side, False, False, 0)
+
+        stack = Gtk.Stack()
+        stack.set_transition_type(Gtk.StackTransitionType.CROSSFADE)
+        outer.pack_start(stack, True, True, 0)
+
+        pages = [
+            ("look", "Оформление", self.build_look),
+            ("panel", "Панель", self.build_panel),
+            ("windows", "Окна", self.build_windows),
+            ("keys", "Клавиатура", self.build_keys),
+            ("system", "Система", self.build_system),
+        ]
+        for name, title, builder in pages:
+            btn = Gtk.RadioButton.new_with_label(None, title)
+            side.pack_start(btn, False, False, 0)
+            page = builder()
+            stack.add_titled(page, name, title)
+            btn.connect("toggled", lambda b, n=name: stack.set_visible_child_name(n)
+                        if b.get_active() else None)
+
+        side.pack_end(Gtk.Box(), True, True, 0)
+        self.status = Gtk.Label(label="")
+        self.status.set_xalign(0.0)
+        side.pack_end(self.status, False, False, 6)
+        side.pack_end(self.make_buttons(), False, False, 0)
+
+    # -------------------------------------------------- общая нижняя панель
+    def make_buttons(self):
+        box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8)
+
+        row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+        apply_btn = Gtk.Button(label="Применить")
+        apply_btn.connect("clicked", lambda *a: self.save())
+        row.pack_start(apply_btn, True, True, 0)
+
+        close_btn = Gtk.Button(label="Закрыть")
+        close_btn.connect("clicked", lambda *a: self.destroy())
+        row.pack_start(close_btn, True, True, 0)
+        box.pack_start(row, False, False, 0)
+        return box
+
+    # ------------------------------------------------------- раздел: внешний вид
+    def build_look(self):
+        page = Page("Оформление",
+                    "Цвет панели и списков, а также тема окон приложений. "
+                    "Меняется сразу, перезагрузка не нужна.")
+        grid = Gtk.Grid(column_spacing=14, row_spacing=10)
+        page.pack_start(grid, False, False, 0)
+
+        grid.attach(Gtk.Label(label="Тема:", xalign=0.0), 0, 0, 1, 1)
+        self.theme_btns = []
+        current = self.values.get("name", "dark")
+        for idx, (key, title, bar, text, act, line, gtk) in enumerate(THEMES):
+            box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
+            # образец палитры
+            sw = Gtk.Box()
+            sw.set_size_request(96, 30)
+            for color in (bar, act, line):
+                cell = Gtk.Box()
+                cell.override_background_color(Gdk.RGBA())
+                cell.override_background_color(Gdk.RGBA.parse(color))
+                sw.pack_start(cell, True, True, 0)
+            box.pack_start(sw, False, False, 0)
+            lbl = Gtk.Label(label=title)
+            lbl.set_xalign(0.0)
+            box.pack_start(lbl, True, True, 0)
+            btn = Gtk.RadioButton.new_with_label(None, None)
+            btn.set_active(key == current)
+            box.pack_start(btn, False, False, 0)
+            grid.attach(box, 0, 1 + idx, 1, 1)
+            self.theme_btns.append((key, btn))
+
+        note = Gtk.Label(label="Тёмная тема берет остальные цвета автоматически:\n"
+                              "текст светлый, акцент голубой.")
+        note.set_xalign(0.0)
+        note.set_line_wrap(True)
+        page.pack_start(note, False, False, 8)
+        return page
+
+    # --------------------------------------------------------- раздел: панель
+    def build_panel(self):
+        page = Page("Панель",
+                    "Нижняя панель с кнопками, окнами и часами. "
+                    "Можно скрыть совсем, изменить высоту и вид времени.")
+        grid = Gtk.Grid(column_spacing=14, row_spacing=12)
+        page.pack_start(grid, False, False, 0)
+
+        self.showbar = Gtk.Switch(active=bool(int(self.values.get("showbar", 1))))
+        self.showbar.set_halign(Gtk.Align.START)
+        grid.attach(Gtk.Label(label="Показывать панель:", xalign=0.0), 0, 0, 1, 1)
+        grid.attach(self.showbar, 1, 0, 1, 1)
+
+        grid.attach(Gtk.Label(label="Высота панели:", xalign=0.0), 0, 1, 1, 1)
+        adj = Gtk.Adjustment(value=int(self.values.get("barh", 34)),
+                             lower=26, upper=60, step_increment=2, page_increment=6)
+        self.barh = Gtk.SpinButton(adjustment=adj, climb_rate=1, digits=0)
+        self.barh.set_numeric(True)
+        grid.attach(self.barh, 1, 1, 1, 1)
+
+        grid.attach(Gtk.Label(label="Время в часах:", xalign=0.0), 0, 2, 1, 1)
+        self.clock = Gtk.ComboBoxText()
+        for title, val in CLOCKS:
+            self.clock.append(title, str(val))
+            if int(self.values.get("clock", 1)) == val:
+                self.clock.set_active_id(str(val))
+        grid.attach(self.clock, 1, 2, 1, 1)
+
+        hint = Gtk.Label(label="Чтобы убрать панель совсем, можно также нажать "
+                             "Win+B, когда окно активно.")
+        hint.set_xalign(0.0)
+        hint.set_line_wrap(True)
+        page.pack_start(hint, False, False, 10)
+        return page
+
+    # ---------------------------------------------------------- раздел: окна
+    def build_windows(self):
+        page = Page("Окна",
+                    "Как окна делят экран и за что их можно таскать мышью.")
+        grid = Gtk.Grid(column_spacing=14, row_spacing=12)
+        page.pack_start(grid, False, False, 0)
+
+        grid.attach(Gtk.Label(label="Главное окно, % ширины:", xalign=0.0),
+                    0, 0, 1, 1)
+        adj = Gtk.Adjustment(value=int(self.values.get("master", 55)),
+                             lower=35, upper=75, step_increment=5, page_increment=10)
+        self.master = Gtk.SpinButton(adjustment=adj, climb_rate=1, digits=0)
+        self.master.set_numeric(True)
+        grid.attach(self.master, 1, 0, 1, 1)
+
+        grid.attach(Gtk.Label(label="Полоса для перетаскивания, px:", xalign=0.0),
+                    0, 1, 1, 1)
+        adj2 = Gtk.Adjustment(value=int(self.values.get("dragtop", 84)),
+                              lower=30, upper=320, step_increment=8, page_increment=24)
+        self.dragtop = Gtk.SpinButton(adjustment=adj2, climb_rate=1, digits=0)
+        self.dragtop.set_numeric(True)
+        grid.attach(self.dragtop, 1, 1, 1, 1)
+
+        keys = Gtk.Label(label="Полезные клавиши:\n"
+                              "    Win — перетащить окно из любой точки\n"
+                              "    Win + правая кнопка — изменить размер\n"
+                              "    Win + пробел — вернуть окно в плитку\n"
+                              "    Win + B — скрыть или показать панель\n"
+                              "    Alt + F4 — закрыть окно\n"
+                              "    двойной щелчок по задаче — во весь экран")
+        keys.set_xalign(0.0)
+        keys.set_line_wrap(True)
+        page.pack_start(keys, False, False, 12)
+        return page
+
+    # ------------------------------------------------------ раздел: клавиатура
+    def build_keys(self):
+        page = Page("Клавиатура",
+                    "Раскладки и переключение языков.")
+        grid = Gtk.Grid(column_spacing=14, row_spacing=12)
+        page.pack_start(grid, False, False, 0)
+
+        grid.attach(Gtk.Label(label="Раскладки:", xalign=0.0), 0, 0, 1, 1)
+        self.layout = Gtk.ComboBoxText()
+        for title, val in LAYOUTS:
+            self.layout.append(title, val)
+            if self.values.get("layout", "us,ru") == val:
+                self.layout.set_active_id(val)
+        grid.attach(self.layout, 1, 0, 1, 1)
+
+        note = Gtk.Label(label="При двух раскладках язык переключается клавишей "
+                             "CapsLock.\nПрименяется сразу и сохраняется для "
+                             "следующих входов в систему.")
+        note.set_xalign(0.0)
+        note.set_line_wrap(True)
+        page.pack_start(note, False, False, 10)
+        return page
+
+    # --------------------------------------------------------- раздел: система
+    def build_system(self):
+        page = Page("Система", "Сведения о системе и обслуживание.")
+
+        info = Gtk.Grid(column_spacing=12, row_spacing=6)
+        page.pack_start(info, False, False, 0)
+
+        def os_release(key):
+            try:
+                with open("/etc/os-release", encoding="utf-8") as fh:
+                    for line in fh:
+                        if line.startswith(key):
+                            return line.split("=", 1)[1].strip().strip('"')
+            except OSError:
+                pass
+            return "неизвестно"
+
+        def kernel():
+            try:
+                return subprocess.run(["uname", "-r"], capture_output=True,
+                                      text=True, timeout=5).stdout.strip()
+            except Exception:
+                return "неизвестно"
+
+        rows = [("Система:", os_release("PRETTY_NAME")),
+                ("Ядро:", kernel()),
+                ("Журнал менеджера:", LOG_FILE)]
+        for i, (title, value) in enumerate(rows):
+            info.attach(Gtk.Label(label=title, xalign=0.0), 0, i, 1, 1)
+            val = Gtk.Label(label=value)
+            val.set_xalign(0.0)
+            val.set_selectable(True)
+            val.set_line_wrap(True)
+            info.attach(val, 1, i, 1, 1)
+
+        box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8)
+        box.set_border_width(16)
+        restart = Gtk.Button(label="Перезапустить оконный менеджер")
+        restart.connect("clicked", lambda *a: self.restart_wm())
+        box.pack_start(restart, False, False, 0)
+
+        about = Gtk.Label(label="Если что-то пошло не так, подробности пишутся "
+                               "в журнал выше: его можно прислать.")
+        about.set_xalign(0.0)
+        about.set_line_wrap(True)
+        box.pack_start(about, False, False, 0)
+        page.pack_start(box, False, False, 10)
+        return page
+
+    # --------------------------------------------------------------- действия
+    def restart_wm(self):
+        subprocess.run(["pkill", "-x", "lindu-wm"], check=False)
+        GLib.timeout_add(700, lambda: (os.system("/usr/local/bin/lindu-wm >> "
+                                                 "'%s' 2>&1 &" % LOG_FILE), False)[1])
+
+    def save(self):
+        theme_key = "dark"
+        for key, btn in self.theme_btns:
+            if btn.get_active():
+                theme_key = key
+        palette = next((t for t in THEMES if t[0] == theme_key), THEMES[0])
+
+        self.values["name"] = theme_key
+        self.values["bar"] = palette[2]
+        self.values["text"] = palette[3]
+        self.values["act"] = palette[4]
+        self.values["line"] = palette[5]
+        self.values["barh"] = int(self.barh.get_value())
+        self.values["clock"] = int(self.clock.get_active_id() or 1)
+        self.values["showbar"] = 1 if self.showbar.get_active() else 0
+        self.values["dragtop"] = int(self.dragtop.get_value())
+        self.values["master"] = int(self.master.get_value())
+        self.values["layout"] = self.layout.get_active_id() or "us"
+
+        write_conf(self.values)
+        apply_gtk_theme(palette[6])
+        apply_rofi(self.values)
+        apply_keyboard(self.values["layout"])
+
+        self.status.set_text("Готово. Изменения уже применены.")
+        self.values = read_conf()
+
+
+def main():
+    win = SettingsWindow()
+    win.connect("destroy", Gtk.main_quit)
+    win.show_all()
+    Gtk.main()
+
+
+if __name__ == "__main__":
+    main()
