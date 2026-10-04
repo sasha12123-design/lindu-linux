@@ -1,15 +1,1 @@
-[Desktop Entry]
-Type=Application
-Version=1.0
-Name=Wi-Fi
-Name[ru]=Wi-Fi (подключиться)
-GenericName=Wireless network
-GenericName[ru]=Беспроводная сеть
-Comment=Connect to a Wi-Fi network
-Comment[ru]=Подключиться к беспроводной сети
-Exec=/usr/local/bin/lindu-wifi
-Icon=network-wireless
-Terminal=false
-Categories=System;Network;
-Keywords=wifi;wi-fi;wireless;network;internet;lindu;
-NoDisplay=false
+W0Rlc2t0b3AgRW50cnldClR5cGU9QXBwbGljYXRpb24KVmVyc2lvbj0xLjAKTmFtZT1XaS1GaQpOYW1lW3J1XT1XaS1GaSAo0L/QvtC00LrQu9GO0YfQuNGC0YzRgdGPKQpHZW5lcmljTmFtZT1XaXJlbGVzcyBuZXR3b3JrCkdlbmVyaWNOYW1lW3J1XT3QkdC10YHQv9GA0L7QstC+0LTQvdCw0Y8g0YHQtdGC0YwKQ29tbWVudD1Db25uZWN0IHRvIGEgV2ktRmkgbmV0d29yawpDb21tZW50W3J1XT3Qn9C+0LTQutC70Y7Rh9C40YLRjNGB0Y8g0Log0LHQtdGB0L/RgNC+0LLQvtC00L3QvtC5INGB0LXRgtC4CkV4ZWM9L3Vzci9sb2NhbC9iaW4vbGluZHUtd2lmaQpJY29uPW5ldHdvcmstd2lyZWxlc3MKVGVybWluYWw9ZmFsc2UKQ2F0ZWdvcmllcz1TeXN0ZW07TmV0d29yazsKS2V5d29yZHM9d2lmaTt3aS1maTt3aXJlbGVzcztuZXR3b3JrO2ludGVybmV0O2xpbmR1OwpOb0Rpc3BsYXk9ZmFsc2U=
