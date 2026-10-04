@@ -22,6 +22,7 @@ file_permissions=(
   ["/usr/local/bin/lindu-wm"]="0:0:755"
   ["/usr/local/bin/lindu-setup.sh"]="0:0:755"
   ["/usr/local/bin/lind""u-wifi"]="0:0:755"
+  ["/usr/local/bin/lind""u-settings"]="0:0:755"
   ["/usr/local/bin/lindu-install"]="0:0:755"
   ["/usr/local/bin/lindu-install-gtk"]="0:0:755"
   ["/usr/local/bin/lindu-install-report"]="0:0:755"
