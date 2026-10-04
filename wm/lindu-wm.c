@@ -1128,7 +1128,11 @@ grabbuttons(Client *c)
      * там, где приложение выбрало только свои события (такие окна раньше
      * нельзя было перетащить мышью). */
     XSelectInput(dpy, c->win,
-                 ButtonPressMask | ButtonReleaseMask | PointerMotionMask);
+                 ButtonPressMask | ButtonReleaseMask | PointerMotionMask |
+                 /* ICCCM/EWMH: WM_CHANGE_STATE и _NET_WM_STATE приходят
+                  * в само окно, и услышать их можно только выбрав
+                  * SubstructureRedirectMask на нём */
+                 SubstructureRedirectMask | SubstructureNotifyMask);
 
     /* Своих захватов на чужих окнах больше не делаем: они перехватывали
      * события у приложений (кнопки в приложениях переставали нажиматься).
@@ -1254,6 +1258,13 @@ maprequest(XEvent *e)
         return;
     }
 
+    /* дочерние окна (меню, подсказки, всплывающие списки) не становятся
+     * самостоятельными окнами: показываем и забываем */
+    if (ev->parent != DefaultRootWindow(dpy)) {
+        XMapWindow(dpy, ev->window);
+        return;
+    }
+
     for (c = clients; c; c = c->next)
         if (c->win == ev->window)
             break;
@@ -1288,8 +1299,7 @@ buttonpress(XEvent *e)
         return;
     focus(c);
 
-    if (be->button == Button1 &&
-        (CLEANMASK(be->state) == 0 || CLEANMASK(be->state) == MODKEY)) {
+    if (be->button == Button1 && CLEANMASK(be->state) == MODKEY) {
         /* Перетаскивание мышью: окно отрывается от тайла и едет за курсором.
          * Без Win порог 8 px — иначе обычный клик по кнопке окна ломал бы
          * тайлинг.
@@ -1421,6 +1431,7 @@ configurerequest(XEvent *e)
     if (!(c->isfloating || c->isfullscreen))
         return;
 
+
     wc.x = MAX(ev->x, 0);
     wc.y = MAX(ev->y, 0);
     wc.width = MAX(ev->width, MINW);
@@ -1503,9 +1514,102 @@ run(void)
             laststatus = time(NULL);
             drawbars();
         } else {
-            usleep(10000);
+            pointercheck();
+            usleep(8000);
         }
     }
+}
+
+/* Окно под указателем (самое верхнее видимое). */
+static Client *
+clientat(int rx, int ry)
+{
+    Client *c;
+
+    if (m) {
+        for (c = clients; c; c = c->next)
+            if (c == m->sel && !c->ishidden &&
+                rx >= c->x && rx < c->x + c->w && ry >= c->y && ry < c->y + c->h)
+                return c;
+    }
+    for (c = clients; c; c = c->next) {
+        if (c->ishidden || c->mon == NULL)
+            continue;
+        if (rx < c->mon->x || rx >= c->mon->x + c->mon->w)
+            continue;
+        if (ry < c->mon->y || ry >= c->mon->y + c->mon->h)
+            continue;
+        if (rx >= c->x && rx < c->x + c->w && ry >= c->y && ry < c->y + c->h)
+            return c;
+    }
+    return NULL;
+}
+
+/* Перетаскивание мышью. Нажатие ловить не нужно: приложение может перехватить
+ * его раньше нас, и тогда менеджер его просто не увидит. Поэтому следим за
+ * состоянием кнопки и положением указателя. Пока указатель не сместился
+ * больше порога, курсор остаётся у приложения — нажатия работают как обычно;
+ * как только смещение есть, окно отрывается от плитки и едет за курсором. */
+static Client *dragc;
+static int dragpx, dragpy, dragoffx, dragoffy, dragging;
+
+static void
+pointercheck(void)
+{
+    Window root = DefaultRootWindow(dpy), rr, child;
+    int rx, ry, wx, wy, mask;
+    Client *c;
+    Monitor *bmon;
+
+    if (!XQueryPointer(dpy, root, &rr, &child, &rx, &ry, &wx, &wy, &mask))
+        return;
+
+    /* указатель над панелью — окна не трогаем */
+    for (bmon = monitors; bmon; bmon = bmon->next)
+        if (bmon->barwin == child)
+            return;
+
+    if (!(mask & Button1Mask)) {
+        if (dragging) {
+            XUngrabPointer(dpy, CurrentTime);
+            dragging = 0;
+            arrange();
+            fprintf(stderr, "lindu-wm: перетаскивание окна завершено\n");
+        }
+        dragc = NULL;
+        return;
+    }
+
+    if (dragc) {
+        int dx = rx - dragpx, dy = ry - dragpy;
+        if (!dragging && (dx > 8 || dy > 8 || dx < -8 || dy < -8)) {
+            dragging = 1;
+            dragc->isfloating = 1;
+            XGrabPointer(dpy, dragc->win, False,
+                         ButtonReleaseMask | PointerMotionMask,
+                         GrabModeAsync, GrabModeAsync, None, None, CurrentTime);
+            fprintf(stderr, "lindu-wm: начато перетаскивание окна 0x%lx\n",
+                    (unsigned long)dragc->win);
+        }
+        if (dragging) {
+            dragc->x = rx - dragoffx;
+            dragc->y = ry - dragoffy;
+            dragc->ox = dragc->x;
+            dragc->oy = dragc->y;
+            XMoveWindow(dpy, dragc->win, dragc->x, dragc->y);
+        }
+        return;
+    }
+
+    c = clientat(rx, ry);
+    if (!c)
+        return;
+    dragc = c;
+    dragpx = rx;
+    dragpy = ry;
+    dragoffx = rx - c->x;
+    dragoffy = ry - c->y;
+    focus(c);
 }
 
 /* ------------------------------ setup --------------------------------- */
