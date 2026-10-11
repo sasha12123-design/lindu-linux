@@ -283,20 +283,27 @@ window#waybar {
 
 
 def read_session():
-    """какая сессия выбрана: wayland или x11"""
+    """какая сессия выбрана: wayland, x11 или auto (выбор не сделан)"""
     try:
         with open(SESSION_FILE, encoding="utf-8") as fh:
             for line in fh:
                 if line.strip().startswith("session"):
                     v = line.split("=", 1)[-1].strip().strip('"').lower()
-                    if v in ("wayland", "x11"):
+                    if v in ("wayland", "x11", "auto"):
                         return v
     except OSError:
         pass
-    return "wayland"
+    return "auto"
 
 
 def write_session(kind):
+    """auto — убираем файл, тогда сессию система выберет сама"""
+    if kind == "auto":
+        try:
+            os.remove(SESSION_FILE)
+        except OSError:
+            pass
+        return
     os.makedirs(os.path.dirname(SESSION_FILE), exist_ok=True)
     with open(SESSION_FILE, "w", encoding="utf-8") as fh:
         fh.write("# выбрано в программе настроек lindu\n"
@@ -634,7 +641,8 @@ class SettingsWindow(Gtk.Window):
         head.get_style_context().add_class("h2")
         sess.pack_start(head, False, False, 0)
         self.session_combo = Gtk.ComboBoxText()
-        self.session_combo.append("wayland", "Wayland — Sway (основная)")
+        self.session_combo.append("auto", "Автоматически (рекомендуется)")
+        self.session_combo.append("wayland", "Wayland — Sway (всегда)")
         self.session_combo.append("x11", "X11 — lindu-wm (запасная)")
         self.session_combo.set_active_id(read_session())
         self.session_combo.connect("changed", lambda *a: self.session_hint())
@@ -666,9 +674,36 @@ class SettingsWindow(Gtk.Window):
         return page
 
     # --------------------------------------------------------------- действия
+    def in_virtual_machine(self):
+        try:
+            with open("/sys/class/dmi/id/sys_vendor") as fh:
+                vendor = fh.read().strip().lower()
+            with open("/sys/class/dmi/id/product_name") as fh:
+                product = fh.read().strip().lower()
+        except OSError:
+            return False
+        both = vendor + " " + product
+        return any(k in both for k in ("vmware", "innotek", "virtualbox",
+                                       "virtual machine", "qemu", "kvm", "bhyve"))
+
     def session_hint(self):
-        want = self.session_combo.get_active_id() or "wayland"
+        want = self.session_combo.get_active_id() or "auto"
         now = current_session()
+        if want == "auto":
+            if self.in_virtual_machine():
+                self.session_note.set_text(
+                    "Автоматически: это виртуальная машина, поэтому выбрана "
+                    "X11-сессия — Sway требует настоящей видеокарты с DRM/KMS и в "
+                    "виртуальной машине не запускается. На обычном компьютере "
+                    "будет выбран Wayland.")
+            elif now == "нет":
+                self.session_note.set_text(
+                    "Автоматически: на обычном компьютере выбирается Wayland (Sway).")
+            else:
+                self.session_note.set_text(
+                    "Автоматически: сейчас запущено %s. На обычном компьютере "
+                    "будет выбран Wayland." % session_title(now))
+            return
         if now == "нет":
             self.session_note.set_text("Сессия не запущена.")
         elif want == now:
