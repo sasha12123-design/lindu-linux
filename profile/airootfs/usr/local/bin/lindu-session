@@ -31,22 +31,12 @@ fi
 
 # Если человек ничего не выбирал, подбираем сами.
 if [ -z "$session" ] || [ "$session" = "auto" ]; then
-    vendor=$(cat /sys/class/dmi/id/sys_vendor 2>/dev/null)
-    product=$(cat /sys/class/dmi/id/product_name 2>/dev/null)
-    case "$(printf '%s %s' "$vendor" "$product" | tr 'A-Z' 'a-z')" in
-        *vmware*|*innotek*|*virtualbox*|*"virtual machine"*|*qemu*|*kvm*|*bhyve*|*bochs*)
-            session="x11"
-            log "виртуальная машина ($vendor $product): для неё беру X11-сессию"
-            log "в виртуальной машине Wayland обычно не работает: sway требует"
-            log "настоящей видеокарты с DRM/KMS. На обычном компьютере — Wayland."
-            ;;
-        *)
-            session="$DEFAULT_SESSION"
-            log "обычный компьютер ($vendor $product): беру сессию $session"
-            ;;
-    esac
-else
-    log "сессия выбрана вручную: $session"
+    # Авто: пробуем Wayland. Если он не заведётся (например, в виртуальной
+    # машине без настоящей видеокарты) — скрипт сессии сам уйдёт в X11
+    # и напишет причину в журнал.
+    session="$DEFAULT_SESSION"
+    log "сессия не выбрана вручную: беру $session"
+    log "если Wayland не заведётся, система сама переключится на X11"
 fi
 log "итог: $session"
 
